@@ -1,0 +1,63 @@
+% Skeleton for the preprint. Not compiled yet: LaTeX is not installed in this environment.
+% Claims and their evidence are in outline.md. Every number here must be checked against
+% the files named there before submission.
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[numbers]{natbib}
+\usepackage{hyperref}
+
+\title{TODO: title (see outline.md)}
+\author{TODO: authors and affiliations}
+\date{TODO}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+TODO: write after claims C1--C4 are final.
+\end{abstract}
+
+\section{Introduction}
+TODO. Why a bit-exact spiking neuron on a low-cost FPGA. Keep claims to those in outline.md.
+
+\section{Model}
+The neuron is discrete in time:
+\begin{align}
+I[t+1] &= I[t] - \left(I[t] \gg k_s\right) + \mathrm{input}, \\
+V[t+1] &= V[t] + \left((V_{\mathrm{rest}} - V[t]) \gg k_m\right) + I[t+1],
+\end{align}
+with a spike and reset when $V[t+1] \ge \theta$, followed by $\mathit{refrac}$ refractory steps.
+TODO: state-number format (Q8.8), saturation after each addition, arithmetic shifts (D-001 to D-005).
+
+\section{Hardware}
+TODO: Tang Nano 20K; one neuron step per clock; record memory; UART link and command decoder; reply sequencer.
+
+\section{Verification}
+TODO: the model is the specification; simulation (cocotb, Icarus); mutation tests; board comparison; parameter sweep.
+
+\section{Results}
+\subsection{Board comparison}
+TODO: Figure~\ref{fig:trace} and Figure~\ref{fig:fi}; numbers from build/m2_trial_*.json.
+\subsection{Parameter sweep}
+TODO: table from build/sweep_*.csv.
+\subsection{Link limits}
+TODO: the bridge limit (C6).
+
+\section{Resources and scaling}
+TODO: C8 numbers.
+
+\section{Limitations}
+TODO: see docs/EXPLAIN.md section 6.
+
+\section*{Availability}
+TODO: repository link (decide before submission).
+
+\section*{AI-assisted development}
+This project was developed with Claude Code. Design decisions, the verification method, and the accept/reject judgments are the author's. See docs/DECISIONS.md.
+
+\bibliographystyle{unsrtnat}
+\bibliography{references}
+
+\end{document}

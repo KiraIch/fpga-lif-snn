@@ -1,0 +1,5 @@
+# Helper makefile driven by sim/Makefile.lif (sets TOPLEVEL, VERILOG_SOURCES, ...).
+SIM ?= icarus
+TOPLEVEL_LANG = verilog
+COCOTB_TEST_MODULES = test_lif_core
+include $(shell cocotb-config --makefiles)/Makefile.sim

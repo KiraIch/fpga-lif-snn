@@ -1,0 +1,29 @@
+# cocotb + Icarus bit-exact tests for rtl/lif_core.v against model/fixed.py.
+# Run inside WSL with the OSS CAD Suite environment loaded:
+#   source ~/oss-cad-suite/environment
+#   cd sim && make -f Makefile.lif            # both test groups
+#   make -f Makefile.lif comb                 # combinational lif_core only
+#   make -f Makefile.lif multistep            # lif_core + state register, 500 steps
+#   make -f Makefile.lif synth                # yosys synth_gowin of lif_core
+HERE := $(CURDIR)
+export PYTHONPATH := $(HERE)/../model:$(HERE):$(PYTHONPATH)
+
+.PHONY: all comb multistep synth clean
+
+all: comb multistep
+
+comb:
+	$(MAKE) -f Makefile.lif_cocotb TOPLEVEL=lif_core COCOTB_TEST_FILTER='test_comb' \
+	    VERILOG_SOURCES='$(HERE)/../rtl/lif_core.v' SIM_BUILD=sim_build_lif_comb \
+	    COCOTB_RESULTS_FILE=results_lif_comb.xml
+
+multistep:
+	$(MAKE) -f Makefile.lif_cocotb TOPLEVEL=lif_core_reg COCOTB_TEST_FILTER='test_multistep' \
+	    VERILOG_SOURCES='$(HERE)/../rtl/lif_core.v $(HERE)/lif_core_reg.v' SIM_BUILD=sim_build_lif_multi \
+	    COCOTB_RESULTS_FILE=results_lif_multi.xml
+
+synth:
+	yosys -p "read_verilog ../rtl/lif_core.v; synth_gowin -top lif_core; stat"
+
+clean:
+	rm -rf sim_build_lif_comb sim_build_lif_multi results_lif_*.xml

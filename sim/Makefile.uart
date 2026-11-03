@@ -1,0 +1,24 @@
+# cocotb + Icarus Verilog testbench for rtl/uart_tx.v and rtl/uart_rx.v.
+# Run inside WSL with the OSS CAD Suite environment loaded:
+#   source ~/oss-cad-suite/environment
+#   cd sim && make -f Makefile.uart
+# Uses its own sim_build_uart / results_uart.xml so it does not clash with other sim builds.
+
+SIM ?= icarus
+TOPLEVEL_LANG = verilog
+
+TOPLEVEL    = uart_tb_top
+COCOTB_TEST_MODULES = test_uart
+SIM_BUILD   = sim_build_uart
+COCOTB_RESULTS_FILE = results_uart.xml
+
+VERILOG_SOURCES = $(CURDIR)/uart_tb_top.v \
+                  $(CURDIR)/../rtl/uart_tx.v \
+                  $(CURDIR)/../rtl/uart_rx.v
+
+COMPILE_ARGS += -g2012
+
+include $(shell cocotb-config --makefiles)/Makefile.sim
+
+clean_uart:
+	rm -rf sim_build_uart results_uart.xml
