@@ -1,8 +1,14 @@
 """Run one E/I condition on the Tang Nano 20K and check every reply against model/network.py.
 
-The network is built the same way as in host/ei_sweep.py (same seed, same draws), so the
-board sees the same weights and inputs as the sweep. The expected replies come from the
-exact model, run_network, not from the sparse sweep. So this also checks the sweep.
+The network is built with ei_full_sweep.build (f_inh, w_max, w_inh) from random.Random(seed),
+and the external input from random.Random(seed * 1000 + e_max). host/ei_experiment.py and
+host/ei_sweep.py draw the external input from the same rng after W, so for the same seed
+their networks get different external inputs. For f_inh = 0.2 / 0.5 (w_inh = 1, w_max = 10,
+e_max = 30, seed 20261104) this script's network gives model rates 0.246 / 0.138 over all
+600 steps; the ei_sweep draw gives 0.238 / 0.144, the numbers of the earlier board runs.
+
+The expected replies come from the exact model, run_network, not from the sparse sweep. So
+this also checks the sweep.
 
 Usage (from host/, with the N = 256 bitstream loaded):
     python ei_board_test.py /dev/ttyUSB1 --f-inh 0.2 --w-max 10 --e-max 30 --steps 600
@@ -44,12 +50,21 @@ from uart_loopback import BAUD_RATE, open_port  # noqa: E402
 
 N = ei_sweep.N
 CHUNK = 16            # bytes per paced write (the USB-UART bridge drops bytes above ~64 back to back)
-RUN_WAIT_S = 2.0
+CLK_HZ = 27000000     # board clock
 REPLY_TIMEOUT_S = 10.0
 CMD_STATUS_REPLY = 0x86
 CMD_COUNTS_REPLY = 0x87
 CMD_SNAPSHOT_REPLY = 0x88
 CMD_TRACE_REPLY = 0x89
+
+
+def run_wait_s(n, steps):
+    """Time to wait after a RUN frame, since RUN has no reply.
+
+    Worst case: every neuron spikes at every step, so the network takes about
+    (N + N*N + 2*N) clocks per step. Times 1.2 for margin, plus 0.1 s.
+    """
+    return (n + n * n + 2 * n) * steps / CLK_HZ * 1.2 + 0.1
 
 
 def trace_data(trace, start, count):
@@ -136,35 +151,45 @@ def main():
     trace = run_network(Params(**ei_sweep.PARAMS), W, ext, args.steps)
     counts = [sum(trace[t][i][1] for t in range(args.steps)) for i in range(N)]
     last = trace[-1]
-    print(f"model: mean rate {sum(counts) / (N * args.steps):.3f}, "
-          f"silent {sum(1 for c in counts if c == 0) / N:.2f}")
+    warm = ei_sweep.WARM
+    print(f"model: mean rate over all {args.steps} steps {sum(counts) / (N * args.steps):.3f}")
+    if args.steps > warm:
+        after = sum(trace[t][i][1] for t in range(warm, args.steps) for i in range(N))
+        print(f"model: mean rate after warm-up (steps {warm}..{args.steps - 1}) "
+              f"{after / (N * (args.steps - warm)):.3f}")
+    else:
+        print(f"model: no warm-up rate (steps {args.steps} <= WARM {warm})")
+    print(f"model: silent {sum(1 for c in counts if c == 0) / N:.2f}")
+    wait = run_wait_s(N, args.steps)
 
     fd = open_port(args.port)
+    sent = 0          # every frame sent, including the starting READ_STATUS
     try:
         # starting counters, from a status request (replies are checked after this)
         send_paced(fd, encode(Cmd.READ_STATUS))
+        sent += 1
         head = read_exact(fd, 8, REPLY_TIMEOUT_S)
         if len(head) != 8:
             print("FAIL: no reply to the starting READ_STATUS")
-            return
+            sys.exit(1)
         ok0, err0 = head[3], head[4]
         print(f"board starting counters: ok={ok0} err={err0}")
 
         # the starting READ_STATUS already counted itself, so ok0 is the count to continue from
         frames, ok, err = build_frames(W, ext, args.steps, ok0, err0)
         bad = 0
-        n_frames = 0
         for frame, reply in frames:
-            n_frames += 1
+            sent += 1
             good, _ = exchange(fd, frame, reply)
             if not good:
                 bad += 1
-                print(f"frame {n_frames}: unexpected reply")
+                print(f"frame {sent}: unexpected reply")
             if frame[1] == Cmd.RUN:
-                time.sleep(RUN_WAIT_S)
+                time.sleep(wait)
 
         # READ_STATUS after the run
         ok = (ok + 1) & 0xFF
+        sent += 1
         good, got = exchange(fd, encode(Cmd.READ_STATUS), status_reply(ok, err, args.steps))
         if not good:
             bad += 1
@@ -175,6 +200,7 @@ def main():
             n = min(64, N - start)
             data = b"".join(c.to_bytes(2, "little") for c in counts[start:start + n])
             ok = (ok + 1) & 0xFF
+            sent += 1
             good, got = exchange(fd, encode(Cmd.READ_COUNTS, pack_read_block(start, n)),
                                  encode(CMD_COUNTS_REPLY, data))
             if not good:
@@ -187,6 +213,7 @@ def main():
                 v, spk = last[i]
                 data += (v & 0xFFFF).to_bytes(2, "little") + bytes([spk])
             ok = (ok + 1) & 0xFF
+            sent += 1
             good, got = exchange(fd, encode(Cmd.READ_SNAPSHOT, pack_read_block(start, n)),
                                  encode(CMD_SNAPSHOT_REPLY, data))
             if not good:
@@ -201,6 +228,7 @@ def main():
             data = trace_data(trace, start, n)
             ok = (ok + 1) & 0xFF
             trace_frames += 1
+            sent += 1
             good, got = exchange(fd, encode(Cmd.READ_TRACE, pack_read_trace(start, n)),
                                  encode(CMD_TRACE_REPLY, data))
             if not good:
@@ -211,9 +239,10 @@ def main():
         os.close(fd)
 
     if bad == 0:
-        print(f"PASS: {n_frames + 1 + trace_frames} frames, counts, snapshot and trace match the model")
+        print(f"PASS: {sent} frames sent, counts, snapshot and trace match the model")
     else:
         print(f"FAIL: {bad} replies differ")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

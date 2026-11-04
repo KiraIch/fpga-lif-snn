@@ -4,7 +4,18 @@
 
 在 Tang Nano 20K（GW2AR-18）上實作 256 顆神經元的脈衝網路（LIF），輸出必須和 Python 參考模型逐位元一致。之後用它做興奮/抑制（E/I）擾動實驗。
 
-**目前階段：** M1 基礎建置（至 2026-11-15）。Python 定點模型與 f-I 曲線已完成；板上 LED、BSRAM 自測、UART 回送（`rtl/uart_echo.v`）已通過。M2 的上板比對已通過（`host/run_trial.py` 三組參數，`host/sweep.py` 完整掃描 2,248 組，合計逐位元一致）；README 已完成，錄影待做。M3 已開始：網路（`rtl/network.v`，單埠 BSRAM 風格、雙累加器）在模擬中與模型逐位元一致，N = 16、64、256 分別為 3,200、12,800、51,200 筆紀錄；完整設計（`rtl/network_top.v`：UART 命令、權重與輸入載入、讀回）：位元組層級模擬 N = 16、64 通過，N = 256 的結果見 `docs/EXPLAIN.md` 4.18；`make TOP=network_top` 布線通過（區塊記憶體 45/46，41.38 MHz；逐步 spike 軌跡 READ_TRACE 0x09 已加入，前 512 步，見 `docs/EXPLAIN.md` 4.20）；網表模擬在此工具鏈無法完成（Gowin 區塊記憶體模擬模型是空的），2026-11-04 起以上板結果作為功能驗證。已燒上板（SRAM）：N = 256 流程測試（675 個封包）與兩個 E/I 條件（f_inh 0.2、0.5）都與完整模型逐位元一致。E/I 擾動（f_inh 0 到 0.6）已完成模型掃描（`docs/EXPLAIN.md` 4.19）；完整掃描（f_inh、w_inh、w_max、e_max，504 次模型執行，24 組全部單調）已完成；5 個條件上過板（與完整模型逐位元一致，含前 512 步 spike 軌跡，每個 736 個封包）。論文正文還沒寫。論文準備在 `docs/paper/`（outline.md、main.tex 骨架、references.bib）。M1 其餘項目（`make sim`、原理圖核對）仍待做。每完成一個階段就更新這一節。
+**目前階段：** M3 進行中（M1 的一項待辦未完成）。
+
+- M1 / M2 已完成：Python 定點模型與 f-I 曲線；板上 LED、BSRAM 自測、UART 回送（`rtl/uart_echo.v`）；M2 單顆神經元上板比對（`host/run_trial.py` 三組參數，`host/sweep.py` 完整掃描 2,248 組，合計逐位元一致）；README 已完成，錄影待做。
+- M3 網路：
+  - 網路核心（`rtl/network.v`，單埠 BSRAM 風格、雙累加器）在模擬中與模型逐位元一致，N = 16、64、256 分別為 3,200、12,800、51,200 筆紀錄。
+  - 完整設計（`rtl/network_top.v`：UART 命令、權重與輸入載入、計數與快照讀回、逐步 spike 軌跡 READ_TRACE 0x09，前 512 步）：位元組層級模擬 N = 16、64、256 通過（N = 256 為 682 個封包，`docs/EXPLAIN.md` 4.18）；`make TOP=network_top` 布線通過，區塊記憶體 45/46，41.38 MHz（4.20）。網表模擬在此工具鏈無法完成（Gowin 區塊記憶體模擬模型是空的），2026-11-04 起以上板結果作為功能驗證。
+  - 已燒上板（SRAM）：N = 256 流程測試（682 個封包）與模型逐位元一致，PASS。E/I 五個條件（f_inh 0.2、0.5 等）各 745 個封包，計數、快照與前 512 步 spike 軌跡都與完整模型逐位元一致，PASS。
+  - E/I 擾動（f_inh 0 到 0.6）：模型完整掃描 504 次執行，24 組全部單調（`docs/EXPLAIN.md` 4.19）。
+  - 論文正文還沒寫。論文準備在 `docs/paper/`（outline.md、main.tex 骨架、references.bib）。
+- M1 其餘待辦：原理圖與腳位核對（rx 70、tx 69、pin 88，見下方「板子事實」）。
+
+每完成一個階段就更新這一節。
 
 ## 數值格式（不可違反）
 
@@ -23,14 +34,30 @@
 
 ## 常用指令
 
-目前可用：
-
 ```bash
 cd model && python -m pytest          # 定點模型單元測試
 cd model && python fi_curve.py        # 產生 docs/fi_curve.png
+cd host && python -m pytest           # PC 端協定測試（host/pytest.ini 只收 test_*.py，不會匯入板上腳本）
 ```
 
-規劃中（尚未建立）：`make sim`、`make bitstream`、`make flash`、`make compare`。
+模擬（WSL，先 `source ~/oss-cad-suite/environment`）：
+
+```bash
+cd sim && make <target>               # target: all, lif, uart, bsram, decoder, decoder_busy, cmd_test, neuron_top, uart_echo, network, network_top
+cd sim && make network_top N=256 T=600   # N 預設 16、T 預設 200；network_top 要求 N 為 2 的次方且 N >= 16
+```
+
+- `network` 與 `network_top` 的 target 會覆寫版本控制中的 `sim/*.mem`。上板測試需要 N = 256、T = 200 的版本：用其他 N 或 T 跑過之後，先用 `git checkout -- sim/nt_*.mem` 還原。
+- `gen_net_top_vectors.py` 要求 7 <= T <= 1024。READ_TRACE「每個封包 7 步」的限制（回覆長度不超過 255 bytes）只在 N <= 256 時成立。
+
+板子（WSL，先 `source ~/oss-cad-suite/environment`；`fpga/Makefile`）：
+
+```bash
+cd fpga && make TOP=<name>            # 合成、布線、打包
+cd fpga && make flash TOP=<name>      # 燒進 SRAM（揮發性）
+python3 host/board_network_test.py /dev/ttyUSB1   # N = 256 命令流程測試（需先重新燒錄，板子的計數不會歸零）
+python3 host/ei_board_test.py /dev/ttyUSB1 --f-inh 0.5 --w-inh 2.0   # 單一 E/I 條件，FAIL 時結束碼為 1
+```
 
 ## 板子事實
 

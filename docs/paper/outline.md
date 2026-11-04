@@ -10,18 +10,18 @@ Status: outline only. No text is final. The author writes the final wording; thi
 
 Only claims with evidence below may go into the paper. Numbers come from the files listed; re-check them before submission.
 
-| # | Claim | Evidence (file) | Numbers at 2026-11-03 |
+| # | Claim | Evidence (file) | Numbers at 2026-11-04 |
 |---|---|---|---|
 | C1 | The fixed-point LIF model (Q8.8, per-step saturation, arithmetic shifts) is specified exactly and tested. | `model/fixed.py`, `model/test_fixed.py`, `docs/DECISIONS.md` D-001–D-005 | 10 unit tests pass |
-| C2 | The single-neuron RTL matches the model bit for bit in simulation. | `sim/test_lif_core.py` (cocotb), `sim/Makefile.lif`, `docs/LOG.md` 2026-11-02 | 10,110 combinational cases; 15 × 500-step traces; mutation (`>>>`→`>>`) caught |
+| C2 | The single-neuron RTL matches the model bit for bit in simulation. | `sim/test_lif_core.py` (cocotb), `sim/Makefile` target `lif` (formerly `sim/Makefile.lif`), `docs/LOG.md` 2026-11-02 | 10,110 combinational cases; 15 × 500-step traces; mutation (`>>>`→`>>`) caught |
 | C3 | The same neuron matches the model bit for bit on the board. | `host/run_trial.py`, `build/m2_trial_{A,B,C}.json`, `docs/m2_*.png` | 60,000 samples in 3 parameter sets; 0 mismatches |
 | C4 | The bit-exact result holds across the legal parameter space. | `host/sweep.py`, `build/sweep_grid.csv`, `build/sweep_random.csv` | 2,048 grid + 200 random sets; 2,023,200 samples; 0 mismatches; 0 refused requests |
 | C5 | A command protocol with checksums and refusal rules works on the board. | `host/protocol.py`, `host/test_protocol.py` (26), `rtl/cmd_decoder.v`, `host/board_cmd_test.py` | 5/5 board checks; the decoder rejects bad checksum, out-of-range values, and requests during a reply |
 | C6 | The UART link has a measurable limit: long unpaced bursts lose bytes at the USB–UART bridge. | `host/uart_loopback.py`, `docs/LOG.md` 2026-11-03 | 96 or 128 bytes in one write return 66; 16-byte paced chunks return all |
 | C7 | A time-multiplexed network with event-driven synapses matches a reference model bit for bit in simulation, for 16, 64 and 256 neurons. | `model/network.py`, `model/test_network.py`, `rtl/network.v`, `sim/tb_network.v` | 3,200 / 12,800 / 51,200 records; 4 mutants caught |
-| C8 | Resource use for the single neuron and the network at N = 16, 64, 256. | yosys `stat` (`build/stat_net_*.txt`, not committed); nextpnr report for N = 256 (`build/pnr/pnr.log`) | single neuron ~274 LUT; network 1,382 / 1,343 / 1,457 cells, state and weights in block RAM; N = 256 place-and-route with a test harness: 35/46 BSRAM, 785 LUT4, 392 DFF, 47.4 MHz (target 27 MHz) |
+| C8 | Resource use for the single neuron and the network at N = 16, 64, 256. | yosys `stat` (`build/stat_net_*.txt`, not committed); nextpnr report for N = 256 (`build/pnr/pnr.log`) | single neuron ~274 LUT; network 1,382 / 1,343 / 1,457 cells (yosys), state and weights in block RAM; full design at N = 256, place-and-route (`make TOP=network_top`, `fpga/build`): 2,536 LUT4 (12%), 1,315 DFF (8%), 45/46 BSRAM (97%), 41.38 MHz (target 27 MHz). Earlier numbers from a test harness that is not the design (35/46 BSRAM, 785 LUT4, 392 DFF, 47.4 MHz) must not be used as the design's numbers |
 
-**Not yet claimed:** the network on the board (M3 board step), the full design (with command decoder and UART) fitting on the GW2AR-18, any biological result, any E/I experiment result. N = 256 is claimed in simulation only. Do not write these claims before the evidence exists.
+**Board status (2026-11-04):** the full design at N = 256 runs on the board for the command flow (682 frames, bit-exact), and five E/I conditions run on the board (each 745 frames, bit-exact, first 512 steps of spikes). These are the only board claims for the network. **Not yet claimed:** any biological result; any E/I condition on the board beyond the five; V step-by-step on the board (only spikes); gate-level simulation of the netlist (not possible with the installed toolchain). Do not write a claim before the evidence file exists and its numbers are re-checked.
 
 ## 2. Section plan
 
@@ -33,7 +33,7 @@ Only claims with evidence below may go into the paper. Numbers come from the fil
 | 3 Hardware | Tang Nano 20K, pipeline, UART link, decoder, neuron top | `rtl/neuron_top.v`, `rtl/cmd_decoder.v` | not started |
 | 4 Verification | model as spec; simulation; mutation tests; board comparison; sweep | C2, C3, C4, mutation logs | not started |
 | 5 Results | board comparison figure, f-I figure, sweep table, limits of the UART link | C3, C4, C6 | figures exist |
-| 6 Resources and scaling | single neuron, network at N = 16, 64, 256 | C8 | synthesis done for N = 16, 64, 256; place-and-route done for N = 256 (test harness); board not yet |
+| 6 Resources and scaling | single neuron, network at N = 16, 64, 256 | C8 | synthesis done for N = 16, 64, 256; place-and-route of the full design at N = 256 done (45/46 BSRAM, 41.38 MHz); board: command flow at N = 256 and five E/I conditions done (see §1, board status) |
 | 7 Limitations | no timeout in the decoder; bridge limit; not compared with biology; single-clock time steps; draft decisions | `docs/EXPLAIN.md` §6 | not started |
 | 8 Availability and AI statement | repository; the AI-assisted development statement (same as README) | `README.md` | not started |
 

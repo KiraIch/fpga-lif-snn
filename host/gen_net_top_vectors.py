@@ -5,7 +5,7 @@ blocks, inputs, one run, then reads of the status, the spike counts and the
 snapshot. A few bad frames are included; each must be counted as an error and
 change nothing. The expected replies come from model/network.py.
 
-Usage (from host/):  python gen_net_top_vectors.py [N] [T]    (defaults N = 16, T = 200)
+Usage (from host/):  python gen_net_top_vectors.py [N] [T]    (defaults N = 16, T = 200; T must be 7..1024)
 
 T above 512 tests the trace limit: the board keeps the spikes of the first 512 steps only.
 
@@ -80,6 +80,9 @@ def build_network(rng):
 
 
 def main():
+    # the test reads trace steps kept-7 .. kept-1, so T needs at least 7 steps; RUN takes at most 1024
+    if not 7 <= T <= 1024:
+        sys.exit(f"T = {T} is out of range: T must be 7..1024 (the test reads the last 7 trace steps)")
     rng = random.Random(SEED)
     W, ext = build_network(rng)
     p = Params(**PARAMS)

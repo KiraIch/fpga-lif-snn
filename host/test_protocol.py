@@ -2,6 +2,7 @@ import pytest
 
 from protocol import (
     PARAM_LEN,
+    TRACE_STEPS,
     Cmd,
     FrameError,
     FrameParser,
@@ -227,6 +228,19 @@ def test_pack_read_trace_layout_and_limits():
         pack_read_trace(0, 0)
     with pytest.raises(ValueError):
         pack_read_trace(0x10000, 1)
+
+
+def test_pack_read_trace_stays_inside_kept_steps():
+    pack_read_trace(TRACE_STEPS - 7, 7)       # ends exactly at the last kept step
+    with pytest.raises(ValueError):
+        pack_read_trace(TRACE_STEPS - 6, 7)   # one step past the kept steps
+    with pytest.raises(ValueError):
+        pack_read_trace(TRACE_STEPS, 1)
+
+
+def test_unpack_trace_rejects_zero_neurons():
+    with pytest.raises(ValueError):
+        unpack_trace(b"", 0)                  # would divide by zero without the check
 
 
 def test_unpack_trace_bit_order():

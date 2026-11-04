@@ -38,6 +38,9 @@ module network_top #(
     output wire [5:0] led
 );
 
+// Constraints on N: it must be a power of two and at least 16. IW = log2(N) is the
+// neuron index width, and tbyte is [IW-4:0] (N/8 bytes per trace step). The trace reply
+// holds 7 steps, so 7 x N/8 bytes must fit in one reply (255 bytes), which holds only for N <= 256.
 localparam IW       = $clog2(N);
 localparam CLK_FRE  = 27000000;
 localparam BAUD     = 115200;

@@ -23,8 +23,8 @@ RESPONSE_FLAG = 0x80
 class Cmd(IntEnum):
     WRITE_PARAM = 0x01    # write neuron parameters (theta, v_reset, v_rest, k_m, k_s, refrac)
     WRITE_WEIGHTS = 0x02  # write one block of the synaptic weight matrix
-    SET_INPUT = 0x03      # set per-neuron constant input or noise level
-    RUN = 0x04            # run T steps, store the record on the board
+    SET_INPUT = 0x03      # network: set the per-neuron constant external input (Q8.8)
+    RUN = 0x04            # run T steps; the network build keeps counts, snapshot and spike trace
     READ_RECORD = 0x05    # read back the stored record
     READ_STATUS = 0x06    # read run state and error flags
     READ_COUNTS = 0x07    # network: spike count of each neuron in the last run
@@ -207,16 +207,21 @@ TRACE_MAX_STEPS = 7       # steps per READ_TRACE frame (7 x N/8 bytes fit in one
 
 
 def pack_read_trace(start: int, count: int) -> bytes:
-    """Payload of READ_TRACE: first step (2 bytes), then count (1..7 steps, 1 byte)."""
+    """Payload of READ_TRACE: first step (2 bytes), then count (1..7 steps, 1 byte).
+    The board keeps only the first TRACE_STEPS steps of a run, so start + count must not pass that."""
     if not 0 <= start <= 0xFFFF:
         raise ValueError("start must fit in 16 bits")
     if not 1 <= count <= TRACE_MAX_STEPS:
         raise ValueError(f"count must be 1..{TRACE_MAX_STEPS}")
+    if start + count > TRACE_STEPS:
+        raise ValueError(f"start + count must be at most {TRACE_STEPS} (the steps kept on the board)")
     return start.to_bytes(2, "little") + bytes([count])
 
 
 def unpack_trace(data: bytes, n: int) -> list[list[int]]:
     """Unpack a READ_TRACE reply for n neurons: per step, n/8 bytes; neuron i is bit i % 8 of byte i // 8."""
+    if n <= 0:
+        raise ValueError("n must be a positive neuron count")
     per_step = n // 8
     if n % 8 or len(data) % per_step:
         raise ValueError("trace data must be a whole number of steps")

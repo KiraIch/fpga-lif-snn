@@ -13,7 +13,7 @@ A leaky integrate-and-fire (LIF) spiking neuron on a low-cost FPGA (Tang Nano 20
 | Single neuron on the board vs model (M2) | done: 60,000 samples in three parameter sets, 0 mismatches |
 | Full parameter sweep on the board | done: 2,248 sets, 0 mismatches (see [Parameter sweep](#parameter-sweep)) |
 | 256-neuron network core, bit-exact in simulation (M3) | done for N = 16, 64, 256 (see [Network](#4-256-neuron-network-m3)) |
-| Network with UART commands on the board | done: N = 256 command flow, 675 frames, 0 mismatches |
+| Network with UART commands on the board | done: N = 256 command flow, 682 frames, 0 mismatches |
 | E/I perturbation experiment | model sweep of 504 runs done; 5 conditions on the board, 0 mismatches |
 
 ## 1. The neuron and its number format
@@ -83,11 +83,11 @@ The network uses the same neuron as section 1. The only change is that the synap
 ### Model
 
 ```
-syn[i][t] = sat( sat( Σ_j (W[j][i] << 2) · s[j][t−1] ) + ext[i] )
+syn[i][t] = sat( Σ_j (W[j][i] << 2) · s[j][t−1]  +  ext[i] )
 ```
 
 - `W` is a signed 8-bit weight matrix. `<< 2` is a global weight scale (`w_shift`, [D-009](docs/DECISIONS.md)).
-- The sum over presynaptic spikes is exact in a wide register and is saturated once. The external input is then added and saturated again. The order in which spikes arrive therefore does not change the result. This rule differs from section 1, which saturates after every addition ([D-008](docs/DECISIONS.md)).
+- The sum over presynaptic spikes is exact in a wide register. The external input is added to that exact sum, and the total is saturated once. The order in which spikes arrive therefore does not change the result. This rule differs from section 1, which saturates after every addition ([D-008](docs/DECISIONS.md)).
 - A spike at step `t` reaches the inputs at step `t+1` ([D-006](docs/DECISIONS.md)).
 
 ### Hardware
@@ -125,10 +125,11 @@ Resource use of the full design at N = 256 (nextpnr, GW2AR-18):
 | Check | Size | Result |
 |---|---|---|
 | Network core vs model (simulation) | N = 16, 64, 256 | 3,200, 12,800 and 51,200 records, all identical |
-| Full design, byte level (simulation) | N = 16, 64, 256 | All replies identical. N = 256: 675 frames, 70,119 bytes in, 1,336 bytes out |
+| Full design, byte level (simulation) | N = 16, 64, 256 | All replies identical. N = 256: 682 frames, 70,168 bytes in, 1,892 bytes out |
 | Full design on the board | N = 256 | 682 frames, 1,892 reply bytes, all identical, PASS in 45.7 s (trace bitstream, fresh board) |
 | Spike trace, simulation | N = 16 (T = 200 and 600), 64, 256 | All replies identical. Four mutants fail as they should |
-| E/I conditions on the board, with trace | 5 conditions, N = 256 | 736 frames each, counts, snapshot and first 512 steps of spikes all identical, PASS |
+| Busy refusal, simulation (`sim/tb_decoder_busy.v`) | every command while busy | PASS: 9 commands refused (no request, no state change), then accepted when idle |
+| E/I conditions on the board, with trace | 5 conditions, N = 256 | 745 frames each, counts, snapshot and first 512 steps of spikes all identical, PASS |
 
 The N = 256 command-flow test assumes a freshly loaded board, because its status replies count from power-up. Run after other tests without reloading, three status replies differ, and the counts, snapshot and trace still match.
 
@@ -158,13 +159,13 @@ Mean firing rate (spikes per neuron per step; the refractory limit is about 0.33
 - **Full sweep:** 504 runs covering `f_inh` 0 to 0.6, `w_inh` 0.5 to 2.0, `w_max` 10 and 20, and `e_max` 10, 30 and 60, with three networks per combination. The rate falls as `f_inh` rises in all 24 combinations.
 - **Usable range:** at `w_max` = 10 and `e_max` = 30, most neurons sit near the refractory limit when `f_inh` is 0 (79% above rate 0.3). The informative range is `f_inh` 0.2 to 0.6.
 - **Why `w_max` = 10:** with `w_max` = 60 the network is driven by its own recurrence. It is either silent or saturated, whatever the external input. The value `w_max` = 10 is a choice for this experiment, not a calibration to biology.
-- **Board:** five conditions were run on the board, each with 736 frames. Every reply matched the full model, which is the reference here: the counts and last-step snapshot for all 256 neurons, and the spikes of the first 512 steps. The conditions were (`f_inh`, `w_inh`, `w_max`, `e_max`) = (0.2, 1.0, 10, 30), (0.5, 1.0, 10, 30), (0.5, 2.0, 10, 30), (0.5, 0.5, 10, 30) and (0.3, 1.5, 20, 10). The other sweep combinations exist only in the model.
+- **Board:** five conditions were run on the board, each with 745 frames. Every reply matched the full model, which is the reference here: the counts and last-step snapshot for all 256 neurons, and the spikes of the first 512 steps. The board-side rate printed by the script is over all 600 steps; the table above uses the mean after the first 100 steps, so the two differ slightly. The conditions were (`f_inh`, `w_inh`, `w_max`, `e_max`) = (0.2, 1.0, 10, 30), (0.5, 1.0, 10, 30), (0.5, 2.0, 10, 30), (0.5, 0.5, 10, 30) and (0.3, 1.5, 20, 10). The other sweep combinations exist only in the model.
 
 ## Repository layout
 
 - `model/` — Python reference model. `fixed.py` is the bit-exact specification; `lif.py` is the float reference; `network.py` is the 256-neuron network; `fi_curve.py` draws the f-I figure.
 - `rtl/` — Verilog. `lif_core.v` (one neuron step, combinational), `neuron_top.v` (single neuron on the board), `network.v` (network core), `network_top.v` (network on the board), `cmd_decoder.v` and `cmd_test.v` (command link), `uart_tx.v` / `uart_rx.v`, `uart_echo.v`, `bsram_test.v`, `blink.v`.
-- `sim/` — testbenches (`tb_*.v`, including `tb_network.v` and `tb_network_top.v`), cocotb tests (`test_*.py`), and the generated test vectors (`*.mem`). Makefiles: `Makefile.lif`, `Makefile.lif_cocotb`, `Makefile.uart`.
+- `sim/` — testbenches (`tb_*.v`, including `tb_network.v` and `tb_network_top.v`), cocotb tests (`test_*.py`), and the generated test vectors (`*.mem`). One `Makefile` with the targets listed under "How to run".
 - `fpga/` — `Makefile` (synthesis, place and route, pack, flash) and one `.cst` per top level.
 - `host/` — PC side: `protocol.py` (frame format), `test_protocol.py`, `uart_loopback.py`, `board_cmd_test.py`, `run_trial.py` (M2 comparison), `sweep.py`, `plot_trial.py`, the network tests `board_network_test.py` (N = 256 command flow) and `ei_board_test.py` (E/I conditions on the board), the E/I model scripts `ei_sweep.py`, `ei_experiment.py`, `ei_full_sweep.py`, `ei_full_summary.py`, `plot_ei.py`, and the vector generators `gen_*.py`.
 - `docs/` — `DECISIONS.md`, `LOG.md` (development log), `EXPLAIN.md` (theory and implementation notes), figures, and the paper notes in `docs/papers/`.
@@ -179,24 +180,26 @@ python -m pytest
 python fi_curve.py
 ```
 
-Protocol tests (PC side):
+Protocol tests (PC side). `host/pytest.ini` limits collection to `test_*.py`, so the board scripts are not imported:
 
 ```bash
 cd host
-python -m pytest test_protocol.py
+python -m pytest
 ```
 
-Simulation (Icarus Verilog, in WSL with the OSS CAD Suite):
+Simulation (Icarus Verilog, in WSL with the OSS CAD Suite). Targets are in `sim/Makefile`: `all`, `lif`, `uart`, `bsram`, `decoder`, `decoder_busy`, `cmd_test`, `neuron_top`, `uart_echo`, `network`, `network_top`:
 
 ```bash
 cd sim
-make -f Makefile.lif           # lif_core: 10,000 random + directed + multi-step
-make -f Makefile.uart          # UART: 6 cocotb tests
+make lif                       # lif_core: 10,000 random + directed + multi-step
+make uart                      # UART: cocotb tests
+make network_top N=16 T=200    # full design, byte level (N defaults to 16, T to 200)
 ```
 
 Board (WSL, with the board attached through usbipd):
 
 ```bash
+source ~/oss-cad-suite/environment
 cd fpga
 make TOP=neuron_top            # synthesise, place and route, pack
 make flash TOP=neuron_top      # load into SRAM (volatile)
@@ -207,6 +210,7 @@ python3 host/run_trial.py /dev/ttyUSB1
 Network on the board:
 
 ```bash
+source ~/oss-cad-suite/environment
 cd fpga
 make TOP=network_top           # synthesise, place and route, pack
 make flash TOP=network_top     # load into SRAM (volatile)

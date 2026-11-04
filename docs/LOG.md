@@ -439,3 +439,35 @@
 **下一步**
 
 - 論文正文與 30 秒錄影（你操作）。
+
+## 2026-11-04（全面檢查與修正）
+
+**完成**
+
+- 飽和規則的文字：程式與測試都是「精確求和，加上外部輸入後只飽和一次」，但四份文件寫成兩次飽和。已改為一次：`model/network.py` 的 docstring、`README.md` 第 4 節、`docs/DECISIONS.md` D-008、`docs/EXPLAIN.md` 4.17。
+- E/I 板上腳本的封包數：每個條件 745 個封包（1 個開始的 READ_STATUS、1 個 WRITE_PARAM、656 個 WRITE_WEIGHTS、3 個 SET_INPUT、1 個 RUN、1 個 READ_STATUS、4 個 READ_COUNTS、4 個 READ_SNAPSHOT、74 個 READ_TRACE）。先前寫的 736 是腳本列印的總數，漏了開始的狀態讀取與 8 個計數／快照封包。README、CLAUDE.md、DECISIONS D-013、EXPLAIN 4.19、4.20 已改為 745。舊的 LOG 條目保留不改，更正寫在這裡。
+- 發放率差異：板上腳本 `ei_board_test.py` 的 W 與 `ei_sweep.py`、`ei_experiment.py` 相同，但 ext 的抽取順序不同。w_inh = 1 時 W 一樣，所以只有 ext 造成發放率不同。板上腳本的數字是全部 600 步，`ei_sweep.measure` 與 `ei_experiment.py` 扣掉前 100 步。EXPLAIN 4.19 與 DECISIONS D-012 已寫明。舊的 662 個封包執行沒有用舊的 ext 抽取方式重跑，所以不能說舊網路已重現。
+- 過時數字：README（675 改為 682、70,168 bytes、1,892 bytes；E/I 736 改為 745）、CLAUDE.md 的目前階段與常用指令、DECISIONS D-010 與 D-011 的狀態、`docs/paper/outline.md` 的 C8 與第 6 節。
+- 新行為的說明：`host/pytest.ini`；`pack_read_trace` 拒絕「起始 + 數量 > 512」，`unpack_trace` 拒絕 n ≤ 0；板上腳本的 RUN 等待改為依步數計算（固定 2 秒對 N = 256、1024 步不夠）；腳本 FAIL 時結束碼為 1；`ei_board_test.py` 同時印出全部步與扣除暖機後的發放率；新增 `sim/tb_decoder_busy.v`（忙碌時所有命令都被拒絕）；`sim/Makefile` 統一入口；`cmd_decoder.v` 註解修正（READ_RECORD 在忙碌時也被拒絕）；網路版要求 N 為 2 的次方且 N ≥ 16；READ_TRACE 每封包 7 步的上限只在 N ≤ 256 成立；`gen_net_top_vectors.py` 要求 7 ≤ T ≤ 1024。以上寫入 EXPLAIN 4.11、4.18、4.20 與 README 的驗證表與執行指令。
+
+**驗證**
+
+- busy 拒絕測試（`sim/tb_decoder_busy.v`）：PASS，9 種命令在忙碌時都被拒絕（err +9、沒有任何 req 脈衝、theta 不變），忙碌解除後 WRITE_PARAM 與 RUN 被接受。變異測試：讓 READ_STATUS 不檢查 busy，測試台 FAIL（3 項不符），所以這個測試抓得到錯誤。
+- 模擬重跑（`sim/Makefile`）：decoder_busy、decoder、cmd_test、neuron_top、uart_echo、bsram、network（N = 16，3,200 筆）、network_top（N = 16，21 個封包）全部 PASS。檢查前另以手動指令跑過 cocotb lif_core（2 + 1）、cocotb UART（6/6）、network 與 network_top N = 64（12,800 筆；59 個封包），全部 PASS。N = 256 的位元組層級模擬這次沒有重跑（RTL 只改了註解）。
+- 板上重跑：沒有做。RTL 只改註解，位元流不變；上板腳本的改動（等待時間、結束碼、封包計數）還沒在板上跑過。
+- host 的 pytest（`host/` 下 `python -m pytest`）：35 passed，沒有 collection error。model 的 pytest：17 passed。`gen_net_top_vectors.py 16 5` 會以錯誤訊息結束（結束碼 1）。
+
+**觀察**
+
+- 飽和文字的錯誤存在四份文件中，程式與測試一直是正確的。這次修的是文件，不是程式。
+- 板上計數器跨 session 保留，沒有 reset 命令，所以 `board_network_test.py` 仍然需要剛燒完的板子。這個問題沒有修。
+- E/I 發放率的解釋已用兩種抽樣方式各跑一次模型確認：目前的抽法得到 0.246 / 0.138（全部 600 步），舊抽法得到 0.238 / 0.144，與兩組舊數字完全相同（見 EXPLAIN 4.19）。
+- STATUS 回覆的「4 bytes」與「8 bytes」並不矛盾：資料是 4 bytes（ok、err、步數 2 bytes），加上 sync、cmd、len、checksum，整個封包是 8 bytes。
+
+**下一步**
+
+- 下次上板時用新版腳本重跑 `board_network_test.py` 與一個 E/I 條件，確認等待時間與 745 個封包的計數。
+- 決定網路的 Icarus 測試（用 Python 產生的 .mem，不是 cocotb）是否符合 CLAUDE.md 的 cocotb 鐵則。
+- 可選：加入 reset 命令。
+- 原理圖與腳位核對（rx 70、tx 69、pin 88）。
+- 論文正文（`docs/paper/`）與錄影。

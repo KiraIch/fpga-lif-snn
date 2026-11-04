@@ -6,8 +6,8 @@ Rules (see docs/DECISIONS.md D-006, D-008, D-009):
 - A spike at step t enters the synaptic input at step t+1 (D-006).
 - Synaptic input of neuron i at step t:
       syn_in_i = sat( sum_j (W[j][i] << w_shift) * s_j[t-1]  +  ext_i )
-  The sum over sources is exact (wide), saturated once, then the external
-  input is added and the result saturated again (D-008). The result does not
+  The sum over sources is exact (wide). The external input is added to that
+  exact sum, and the total is saturated once (D-008). The result does not
   depend on the order in which sources are added.
 - Each neuron then takes one single-neuron step (model/fixed.py `step`) with
   its syn_in. All neurons use the state at t, so the update order does not matter.

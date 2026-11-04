@@ -23,8 +23,18 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SIM = os.path.join(HERE, "..", "sim")
 
 CHUNK = 16
-RUN_WAIT_S = 2.0      # RUN has no reply; N = 256, 200 steps takes well under this
+CLK_HZ = 27000000     # board clock
+BOARD_N = 256         # neurons in the bitstream
 REPLY_TIMEOUT_S = 10.0
+
+
+def run_wait_s(n, steps):
+    """Time to wait after a RUN frame, since RUN has no reply.
+
+    Worst case: every neuron spikes at every step, so the network takes about
+    (N + N*N + 2*N) clocks per step. Times 1.2 for margin, plus 0.1 s.
+    """
+    return (n + n * n + 2 * n) * steps / CLK_HZ * 1.2 + 0.1
 
 
 def load_hex(name):
@@ -59,6 +69,9 @@ def main():
     expect = load_hex("nt_expect.mem")
     n, nframes, nreply = load_hex("nt_meta.mem")
     assert len(stream) == sum(frame_len) and len(expect) == nreply
+    if n != BOARD_N:
+        print(f"WARNING: nt_meta.mem has N={n}, but the board bitstream is N={BOARD_N}; "
+              f"run gen_net_top_vectors.py {BOARD_N} first")
     print(f"N={n}: {nframes} frames, {len(stream)} bytes in, {nreply} bytes expected back")
 
     fd = open_port(port)
@@ -85,7 +98,9 @@ def main():
                     print(f"  want {want.hex()}")
                     print(f"  got  {got.hex()}")
             elif frame[1] == 0x04:
-                time.sleep(RUN_WAIT_S)
+                # RUN payload: input (bytes 3..4), then steps (bytes 5..6, little-endian)
+                steps = frame[5] | (frame[6] << 8)
+                time.sleep(run_wait_s(n, steps))
             else:
                 time.sleep(0.05)
     finally:
@@ -96,6 +111,7 @@ def main():
         print(f"PASS: {nframes} frames, {nreply} reply bytes match the model ({dt:.1f} s)")
     else:
         print(f"FAIL: {bad} replies differ, {epos} of {nreply} reply bytes checked ({dt:.1f} s)")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

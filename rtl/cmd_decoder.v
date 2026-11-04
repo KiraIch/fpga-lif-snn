@@ -25,8 +25,8 @@
 // The top level builds all replies. Any other valid frame, and any frame with an
 // out-of-range value, is counted in err_count. Counters wrap at 255.
 // While `busy` is high (a reply is being sent, or the network is running or loading),
-// every command except READ_RECORD is refused and counted as an error, so a run never
-// sees a parameter or weight change, and a reply is never overwritten.
+// every command is refused and counted as an error, so a run never sees a parameter
+// or weight change, and a reply is never overwritten.
 //
 // Limitation: the parser has no timeout. If a length byte is corrupted, the
 // decoder waits for the wrong number of bytes until the next frame is
@@ -37,7 +37,7 @@ module cmd_decoder #(
     input  wire              clk,
     input  wire      [7:0]   byte_in,
     input  wire              byte_valid,
-    input  wire              busy,       // refuses every command except READ_RECORD
+    input  wire              busy,       // refuses every command (counted as an error)
     output reg signed [15:0] theta = 16'sd0,
     output reg signed [15:0] v_reset = 16'sd0,
     output reg signed [15:0] v_rest = 16'sd0,
