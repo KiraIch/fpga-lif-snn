@@ -523,3 +523,23 @@
 - 核對 bib 每筆的 DOI 與網址，特別是 gautam2025 的完整標題。
 - 更新：作者要求刪掉引言的缺口陳述（「在我們回顧的設計中沒有找到…」）。已刪除，並把前後句改為「本文把這個嚴格標準套用到有抑制連線的遞迴網路」，不再主張新穎性。
 
+
+## 2026-11-04（安裝 LaTeX 並編譯論文）
+
+**完成**
+
+- 用 winget 安裝 MiKTeX 25.12（使用者範圍，不需系統管理員）。`pdflatex`、`bibtex` 都能執行。
+- 開啟 MiKTeX 按需安裝（`[MPM]AutoInstall=1`），讓 natbib、booktabs、hyperref 等套件第一次用到時自動下載。
+- 編譯 `docs/paper/main.tex`（pdflatex、bibtex、pdflatex 兩次）。輸出放在暫存資料夾，沒有寫進 repo。結果：11 頁，0 個錯誤，0 個未定義的引用，7 筆參考文獻全部解析。
+- 修正 `references.bib`：cheung2009 的 `note` 欄位含有底線的網址，BibTeX 會把它原樣輸出到參考文獻，造成 `Missing $` 錯誤。改為標準的 `url` 欄位。
+
+**觀察**
+
+- 目前的 `note` 欄位（例如 `check: ...`）會印在 PDF 的參考文獻裡。這是草稿用的提醒，投稿前要移除。
+- 有兩個 overfull hbox（約 11 pt、22 pt），只是排版上的小問題，之後再調。
+- 沒有檢視 PDF 的版面（環境沒有 pdftoppm），只用 log 驗證。
+
+**下一步**
+
+- 作者用 PDF 檢查版面與標題、作者的顯示。
+- 投稿前移除 `note` 裡的 check 提醒。
