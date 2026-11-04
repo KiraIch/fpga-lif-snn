@@ -11,44 +11,61 @@
 \usepackage{hyperref}
 \graphicspath{{../}}
 
-\title{Bit-exact spiking neurons on a low-cost FPGA:\\ verifying a fixed-point LIF model against hardware}
-\author{TODO: authors and affiliations}
-\date{TODO}
+\title{Bit-Exact Verification of a 256-Neuron Fixed-Point Spiking Network\\ on a Low-Cost FPGA}
+\author{ChiaAn Lin\thanks{Corresponding author: \href{mailto:ntuhibiki@gmail.com}{ntuhibiki@gmail.com}}\\
+% TODO: affiliation (or "Independent researcher")
+}
+\date{Draft, November 2026}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-We describe a leaky integrate-and-fire (LIF) neuron and a 256-neuron network implemented on a low-cost FPGA (Tang Nano 20K, Gowin GW2AR-18), and we compare the hardware with a Python reference model bit for bit.
+Spiking neuron models are small enough to run on inexpensive FPGAs, but a hardware result is only useful for model-based experiments if one can state exactly how it differs from the model.
+We present a leaky integrate-and-fire (LIF) neuron and a 256-neuron network on a low-cost FPGA (Tang Nano 20K, Gowin GW2AR-18), and we test them against a Python reference model with a strict criterion: no bit may differ.
 The model uses signed Q8.8 fixed-point state, saturating additions and shift-based time constants, so no multiplier is needed.
-A single neuron matched the model on the board in every sampled step, with no mismatch: 60,000 samples in three hand-picked parameter sets and 2,023,200 samples in a sweep of 2,248 parameter sets.
-A time-multiplexed network of 256 neurons with event-driven synapses, controlled over a UART link, matched the model on every reply of a 682-frame command flow, and on five excitation/inhibition conditions that include the spikes of every neuron in the first 512 steps.
+On the board, a single neuron matched the model in all 60,000 samples of three hand-picked parameter sets and in all 2,023,200 samples of a sweep of 2,248 parameter sets.
+A time-multiplexed network with event-driven synapses and an order-independent input rule, controlled over a UART link, matched the model on every reply of a 682-frame command flow, and on five excitation/inhibition (E/I) conditions that include the spikes of all 256 neurons in the first 512 steps.
+Mutation tests show that the checkers can fail.
 The full design uses 12\% of the logic and 97\% of the block RAM, and meets timing at 41.38~MHz against a 27~MHz clock.
-We report the verification method, including mutation tests that show the checkers can fail, and the limits we found: a UART bridge that drops bytes in long bursts, a decoder without a time-out, and a spike trace that covers only the first 512 steps.
-We make no claim about biological validity; the hardware is validated against the model only.
+A model sweep of 504 runs shows that the mean firing rate falls monotonically as the inhibitory fraction rises, in all 24 parameter combinations.
+We also report the limits we found: a USB--UART bridge that drops bytes in long bursts, a command decoder without a time-out, and a spike trace that covers only the first 512 steps.
+The hardware is validated against the model only; we make no claim about biological validity.
 \end{abstract}
 
 \section{Introduction}
-Spiking neuron models are small enough to run on inexpensive FPGAs, and many FPGA designs for spiking networks exist \citep{szczerek2025}.
-A hardware result is only useful for model-based experiments if one can say how it differs from the model.
-Several reports we read validate a design by task accuracy or by functional agreement with a simulator.
-% CHECK: this is based on Fan 2025 and Gautam 2025 (notes in docs/papers/notes); do not generalise beyond what was read.
-Here we ask for more: the hardware state after every step equals the state of a reference model, with zero differences.
-This turns a check of the hardware into a yes-or-no test that a single flipped bit can fail.
+Networks of spiking neurons with excitatory and inhibitory populations are a standard tool for studying how the balance between excitation and inhibition shapes neural activity \citep{brunel2000}.
+% CHECK: Brunel 2000: full text not read (metadata only). Keep this sentence at the level of "the class of network studied"; add no claim about its results.
+Such networks are small enough to run on inexpensive FPGAs, and many FPGA designs for spiking networks exist \citep{szczerek2025}.
 
-Related FPGA work includes a time-multiplexed accelerator whose integer LIF neurons are checked against a bit-accurate software model on an image-classification task \citep{ansari2026}, a systolic simulator that updates only the neurons that spike \citep{cheung2009}, and an open-source framework for low-end FPGAs with 8-bit quantisation \citep{fan2025}.
-% CHECK: Ansari 2026 is an arXiv preprint (arXiv:2608.00595); cite as preprint. Cheung 2009 and Fan 2025: read in full, see docs/papers/notes.
-These designs target other boards and tasks, and their numbers are not directly comparable with ours.
-% TODO: state the gap in the author's own words after reading the full list in docs/papers/README.md (groups 2 and 3).
+A hardware result is only as useful as the answer to one question: how does it differ from the model it implements?
+Fixed-point hardware raises this question sharply.
+Quantisation, saturation and the choice between arithmetic and logical shifts each change the numbers, and a mistake in any of them can leave the average behaviour almost intact while changing individual spikes.
+A check by task accuracy, or by general agreement with a simulator, can miss such differences.
+Several reports we read validate a design in this way \citep{fan2025,gautam2025}.
+% CHECK: Fan 2025 and Gautam 2025 (notes in docs/papers/notes): Fan reports accuracy on MNIST; Gautam reports functional agreement for inference. Do not generalise beyond what was read.
+A stricter criterion is available: require that the hardware state after every step equals the state of a reference model, with zero differences.
+This turns the check into a yes-or-no test that a single flipped bit can fail.
 
-This paper makes three contributions.
-(i)~An exact specification of a fixed-point LIF neuron and of a network update rule that does not depend on the order in which spikes arrive.
-(ii)~A verification method in which the model is the specification, checked in simulation, with mutation tests, and on the board, step by step.
-(iii)~A 256-neuron, UART-controlled network on a low-cost board, with the resources it needs and the limits we measured.
+Bit-accurate comparison has been used in FPGA work before.
+For example, an integer-LIF accelerator for image classification was checked against a bit-accurate software model \citep{ansari2026}.
+Other designs aim at speed or scale, such as a systolic simulator built around updating only the neurons that spike \citep{cheung2009}.
+These designs target other boards and tasks, and their numbers are not comparable with ours.
 
-The network is built for excitation/inhibition (E/I) perturbation experiments \citep{brunel2000}.
-% CHECK: Brunel 2000: full text not read (metadata only). Keep this sentence at the level of "the class of network studied", add no claim about its results.
-We include one such experiment as a demonstration that the hardware and the model agree under changing E/I balance.
+This paper applies the strict criterion to a recurrent network with inhibitory connections on a low-cost board.
+We make three contributions.
+\begin{enumerate}
+\item \textbf{An exact specification.} A fixed-point LIF neuron with saturating additions, arithmetic shifts and shift-based time constants, and a network input rule that sums the synaptic contributions exactly and saturates once, so the result does not depend on the order in which spikes arrive.
+\item \textbf{A verification method.} The model is the specification. It is checked in simulation, with mutation tests that show the checkers can fail, and on the board, step by step. For a single neuron this covers 2,083,200 sampled steps; for the network it covers a 682-frame command flow and five E/I conditions.
+\item \textbf{A 256-neuron network on a low-cost board.} A UART-controlled, time-multiplexed network, with its resource use and the limits we measured: a USB--UART bridge that drops bytes in long bursts, a decoder without a time-out, and a spike trace that covers only 512 steps.
+\end{enumerate}
+We also include one E/I experiment in the model, in which the fraction of inhibitory sources is varied, and we run five of its conditions on the board.
+Its purpose is to show that the hardware and the model agree while the E/I balance changes, not to draw conclusions about neural tissue.
+The hardware is validated against the model only, and we make no claim about biological validity.
+
+The paper is organised as follows.
+Section~\ref{sec:model} defines the model, Section~\ref{sec:hardware} the hardware, and Section~\ref{sec:verify} the verification method.
+Section~\ref{sec:results} gives the board results and the E/I demonstration, Section~\ref{sec:resources} the resource use, and Section~\ref{sec:limits} the limitations.
 
 \section{Model}
 \label{sec:model}

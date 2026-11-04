@@ -4,7 +4,9 @@ Status: first full draft of the body in `main.tex` (2026-11-04), not compiled (n
 
 **Target:** a technical preprint (Research Square). Plan date: end of December 2026, after M2 and the start of M3. **Submission is the author's action.** Nothing is posted by the assistant.
 
-**Working title (draft):** Bit-exact spiking neurons on a low-cost FPGA: verifying a fixed-point LIF model against hardware
+**Working title (draft, 2026-11-04):** Bit-Exact Verification of a 256-Neuron Fixed-Point Spiking Network on a Low-Cost FPGA
+
+**Author line (draft):** ChiaAn Lin (ntuhibiki@gmail.com). Affiliation is still a TODO in `main.tex`.
 
 ## 1. Claims and the evidence for each
 
@@ -27,8 +29,8 @@ Only claims with evidence below may go into the paper. Numbers come from the fil
 
 | Section | Content | Evidence | Status |
 |---|---|---|---|
-| Abstract | one paragraph, after C1–C4 are final | C1–C4 | first draft |
-| 1 Introduction | why a bit-exact FPGA neuron; the cost argument; what is new here (verification method, low cost) | related work (see §4) | first draft; the gap statement is a TODO |
+| Abstract | one paragraph, after C1–C4 are final | C1–C4 | draft v2 (assistant-written, author to check) |
+| 1 Introduction | why a bit-exact FPGA neuron; the cost argument; what is new here (verification method, low cost) | related work (see §4) | draft v2 (assistant-written); the novelty (gap) sentence was removed at the author's request |
 | 2 Model | LIF equations, shift-based time constants, Q8.8 rules, refractory period | `model/fixed.py`, D-001–D-006 | first draft |
 | 3 Hardware | Tang Nano 20K, pipeline, UART link, decoder, neuron top | `rtl/neuron_top.v`, `rtl/cmd_decoder.v` | first draft (single neuron and network) |
 | 4 Verification | model as spec; simulation; mutation tests; board comparison; sweep | C2, C3, C4, mutation logs | first draft |
