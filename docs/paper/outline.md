@@ -1,6 +1,6 @@
 # Paper outline (working draft)
 
-Status: outline only. No text is final. The author writes the final wording; this file holds the claims, the evidence for each claim, and the open items.
+Status: first full draft of the body in `main.tex` (2026-11-04), not compiled (no LaTeX here). No text is final. The author writes the final wording; this file holds the claims, the evidence for each claim, and the open items.
 
 **Target:** a technical preprint (Research Square). Plan date: end of December 2026, after M2 and the start of M3. **Submission is the author's action.** Nothing is posted by the assistant.
 
@@ -27,15 +27,15 @@ Only claims with evidence below may go into the paper. Numbers come from the fil
 
 | Section | Content | Evidence | Status |
 |---|---|---|---|
-| Abstract | one paragraph, after C1–C4 are final | C1–C4 | not started |
-| 1 Introduction | why a bit-exact FPGA neuron; the cost argument; what is new here (verification method, low cost) | related work (see §4) | not started |
-| 2 Model | LIF equations, shift-based time constants, Q8.8 rules, refractory period | `model/fixed.py`, D-001–D-006 | not started |
-| 3 Hardware | Tang Nano 20K, pipeline, UART link, decoder, neuron top | `rtl/neuron_top.v`, `rtl/cmd_decoder.v` | not started |
-| 4 Verification | model as spec; simulation; mutation tests; board comparison; sweep | C2, C3, C4, mutation logs | not started |
+| Abstract | one paragraph, after C1–C4 are final | C1–C4 | first draft |
+| 1 Introduction | why a bit-exact FPGA neuron; the cost argument; what is new here (verification method, low cost) | related work (see §4) | first draft; the gap statement is a TODO |
+| 2 Model | LIF equations, shift-based time constants, Q8.8 rules, refractory period | `model/fixed.py`, D-001–D-006 | first draft |
+| 3 Hardware | Tang Nano 20K, pipeline, UART link, decoder, neuron top | `rtl/neuron_top.v`, `rtl/cmd_decoder.v` | first draft (single neuron and network) |
+| 4 Verification | model as spec; simulation; mutation tests; board comparison; sweep | C2, C3, C4, mutation logs | first draft |
 | 5 Results | board comparison figure, f-I figure, sweep table, limits of the UART link | C3, C4, C6 | figures exist |
 | 6 Resources and scaling | single neuron, network at N = 16, 64, 256 | C8 | synthesis done for N = 16, 64, 256; place-and-route of the full design at N = 256 done (45/46 BSRAM, 41.38 MHz); board: command flow at N = 256 and five E/I conditions done (see §1, board status) |
-| 7 Limitations | no timeout in the decoder; bridge limit; not compared with biology; single-clock time steps; draft decisions | `docs/EXPLAIN.md` §6 | not started |
-| 8 Availability and AI statement | repository; the AI-assisted development statement (same as README) | `README.md` | not started |
+| 7 Limitations | no timeout in the decoder; bridge limit; not compared with biology; single-clock time steps; draft decisions | `docs/EXPLAIN.md` §6 | first draft |
+| 8 Availability and AI statement | repository; the AI-assisted development statement (same as README) | `README.md` | first draft; repository link is a TODO |
 
 ## 3. Figures
 
@@ -73,6 +73,6 @@ Every citation needs its DOI or URL checked against the publisher page before su
 
 ## 6. What must not be in the paper
 
-- Any sentence that describes the network on the board until the M3 board run exists.
+- Any sentence about the network on the board that goes beyond the command flow (682 frames) and the five E/I conditions in §1.
 - The f-I hardware curve as "validated against biology": it is validated against the model only.
 - Numbers that are not in a file listed above.
