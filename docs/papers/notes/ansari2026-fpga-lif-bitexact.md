@@ -23,7 +23,9 @@ Ansari and Wielgosz present a time-multiplexed, inference-only SNN accelerator f
 
 - 時間多工的 1-bit spike feeding，由 FSM 控制，權重分散存放於各區域記憶體，以降低布線壓力。
 - LIF 更新式：V[t+1] = V[t] − (V >> leak_shift) + I_syn[t]，並以暫存器寬度避免溢位。
-- 以 10,000 筆 MNIST 測試集與五組隨機種子，對照 bit-accurate 軟體 SNN 參考模型，並以 VHDL testbench 驗證結構等價性。
+- 軟體參考模型（bit-accurate）在完整 10,000 筆 MNIST 測試集上以五組隨機種子評估，這部分只在軟體上跑（演算法變異，表 2）。硬體 VHDL 只用 1,000 筆子集驗證結構等價性，不是逐步比對。
+- 準確率：完整 ANN（Adam 訓練 10 個 epoch）97.70%；最佳化後的 SNN 配置平均 96.70% ± 0.04%，轉換損失 1.00%，架構為 16 個時間步。
+- 作者確認（2026-11-06）：10,000 筆是正確的數字；先前「1,000 筆」與「10,000 筆」的衝突，是因為硬體與軟體的評估對象不同。
 - 在 Artix-7 XC7A200T 上 Fmax 由 13.3 MHz 提升至 167 MHz；單張影像延遲約 82 µs；功耗為 Vivado 估計的 0.336 W，能效約 36,300 samples/J（估計值）。
 
 ## 限制與注意

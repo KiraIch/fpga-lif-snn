@@ -12,7 +12,7 @@
 
 \title{Bit-Level Verification of a Fixed-Point LIF Neuron and a 256-Neuron Spiking Network on a Low-Cost FPGA}
 \author{ChiaAn Lin\thanks{Corresponding author: \href{mailto:ntuhibiki@gmail.com}{ntuhibiki@gmail.com}}\\
-{[Affiliation to be added by the author]}
+Master Program for Health and Intelligent Medicine
 }
 \date{November 2026}
 
@@ -43,7 +43,7 @@ Validation by task accuracy, or by agreement with a simulator, can miss such err
 A stricter test asks that the hardware state after every step equals the state of a reference model, with zero differences, so that a single flipped bit makes the test fail.
 
 Bit-accurate software models are also used as references for FPGA designs.
-An integer-LIF accelerator for image classification was checked against a bit-accurate software model, while the hardware itself was checked on a sample of inputs rather than step by step \citep{ansari2026}.
+An integer-LIF accelerator for image classification was checked against a bit-accurate software model on the full MNIST test set, while the hardware was checked for structural equivalence on a 1,000-sample subset, rather than step by step \citep{ansari2026}.
 A systolic simulator built around updating only the neurons that spike is an example of a design aimed at speed and scale \citep{cheung2009}.
 These designs target other boards and tasks, and their numbers are not comparable with ours.
 
@@ -305,13 +305,13 @@ The arithmetic saturation paths were not reached on the board, and the membrane 
 The E/I results are model results for synthetic networks and are not a biological claim.
 
 \section*{Availability}
-The code, RTL, testbenches and host scripts are in the repository \url{https://github.com/KiraIch/fpga-lif-snn}, branch \texttt{m3-network}. [Repository visibility and the commit to cite to be confirmed by the author.]
-The raw results (sweep CSVs, board logs and place-and-route logs) are not yet in the repository; they are to be placed in a \texttt{results/} directory before submission.
+The code, RTL, testbenches, host scripts and raw results are available in the public repository \url{https://github.com/KiraIch/fpga-lif-snn}, branch \texttt{m3-network}.
+The raw results (sweep CSVs, board logs and place-and-route logs) are in the \texttt{results/} directory.
 
 \section*{Declarations}
-\textbf{Competing interests.} [To be confirmed by the author.]\\
-\textbf{Funding.} [To be confirmed by the author.]\\
-\textbf{Author contributions.} [To be confirmed by the author.]\\
+\textbf{Competing interests.} The author declares no competing interests.\\
+\textbf{Funding.} This work received no funding.\\
+\textbf{Author contributions.} The work was carried out independently by the author, ChiaAn Lin.\\
 \textbf{Ethics.} Not applicable: no human or animal data were used.
 
 \section*{AI-assisted development}

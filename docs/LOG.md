@@ -592,3 +592,25 @@
 - 決定是否做飽和測試（需要模擬與上板）。
 - 建立 `results/` 目錄，決定哪些原始結果要放進版本控制。
 - 核對 Ansari 原 PDF 後修正筆記。
+
+## 2026-11-06（論文作者資訊、聲明與原始結果）
+
+**完成**
+
+- 作者單位填入 Master Program for Health and Intelligent Medicine。
+- Availability：repo 將公開（https://github.com/KiraIch/fpga-lif-snn，branch m3-network）；原始結果放在 `results/`。
+- Declarations：無利益衝突、無經費、作者獨立完成（作者自述）。
+- 引言的 Ansari 句子改為：軟體參考模型在完整 MNIST 測試集上評估；硬體只做 1,000 筆子集的結構等價性驗證。依作者提供的數字更正筆記（完整 10,000 筆、五個種子、ANN 97.70%、SNN 96.70% ± 0.04%、16 個時間步）。
+- 新增 `results/`：論文引用的原始 CSV、m2 JSON 與布線 log，加上 `results/README.md` 說明每個檔案的來源。`.gitignore` 增加 `!results/*.log`，否則 `*.log` 會擋住布線 log。
+
+**驗證**
+
+- 論文 `pdflatex` 編譯：0 錯誤、0 未定義引用、5 筆參考文獻、沒有殘留佔位符。
+- Research Square 授權：CC BY 4.0（來源：Research Square editorial policy）。
+
+**還沒做（投稿前）**
+
+- AI 揭露要移到 Methods 章節（Research Square 的規定）。目前在論文最後。
+- 板上重跑 `host/board_network_test.py`（新的等待時間腳本）。
+- 作者確認：`docs/DECISIONS.md` 與 `EXPLAIN.md` 的草稿改寫。
+- 作者確認：Research Square 的格式與帳號提交。
