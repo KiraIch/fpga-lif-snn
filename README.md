@@ -244,4 +244,8 @@ The board forgets its bitstream and parameters at power-off.
 
 ## AI-assisted development
 
-This project is developed with Claude Code. Design decisions, the verification method, and the accept/reject judgments are mine; see `docs/DECISIONS.md`. Draft decisions are marked as drafts until they are rewritten.
+This project is developed with Claude Code. Design decisions, the verification method, and the accept/reject judgments are mine; see `docs/DECISIONS.md`. The decisions in `docs/DECISIONS.md` were reviewed by the author on 2026-11-06.
+
+## License
+
+Released under the MIT License. See [LICENSE](LICENSE).
