@@ -224,7 +224,7 @@ Figure~\ref{fig:trace} shows the first 100 steps of parameter set A, and Figure~
 
 \begin{table}[t]
 \centering
-\caption{Single neuron: board against model. Values are real numbers; the Q8.8 raw value is the real value times 256.}
+\caption{Single neuron: board against model. Values are real numbers; the Q8.8 raw value is the real value times 256. Columns: $\theta$, $V_{\mathrm{reset}}$, $V_{\mathrm{rest}}$, $k_m$, $k_s$, refrac, samples, mismatches.}
 \label{tab:m2}
 \setlength{\tabcolsep}{7pt}
 \begin{tabular}{lrrrrrrrr}
@@ -324,7 +324,7 @@ S4 & $-128$ & $-256$ & 0 & 4 & 3 & 2 \\
 The 682-frame flow at $N=256$ gave 1,892 reply bytes, all identical to the model, in 44.4~s (run of 2026-11-06, with the current \texttt{board\_network\_test.py}; log in \texttt{results/}).
 Five E/I conditions then ran on the board, each with 745 frames: $(f_{\mathrm{inh}}, w_{\mathrm{inh}}, w_{\max}, e_{\max}) = (0.2, 1, 10, 30)$, $(0.5, 1, 10, 30)$, $(0.5, 0.5, 10, 30)$, $(0.5, 2, 10, 30)$ and $(0.3, 1.5, 20, 10)$.
 For each, the spike counts, the last-step snapshot and the spikes of the first 512 steps matched the full model (logs \texttt{results/\allowbreak ei\_board\allowbreak\_*\allowbreak\_2026-11-06.log}, run 2026-11-06 with \texttt{network\_top}).
-Each run sent 745 frames: the starting \texttt{READ\_STATUS}, 1 \texttt{WRITE\_PARAM}, 656 \texttt{WRITE\_WEIGHTS} (100 weights each), 3 \texttt{SET\_INPUT}, 1 \texttt{RUN}, 1 \texttt{READ\_STATUS}, 4 \texttt{READ\_COUNTS}, 4 \texttt{READ\_SNAPSHOT} and 74 \texttt{READ\_TRACE}. The 74 trace frames cover the 512 kept steps at seven per frame, the last frame carrying one step. The command flow of Table~\ref{tab:flow} has a different breakdown, because it also contains invalid frames and only three valid trace frames.
+Each run sent 745 frames: the starting \texttt{READ\_STATUS}, 1 \texttt{WRITE\_PARAM}, 656 \texttt{WRITE\_WEIGHTS} (100 weights each), 3 \texttt{SET\_INPUT}, 1 \texttt{RUN}, 1 \texttt{READ\_STATUS}, 4 \texttt{READ\_COUNTS}, 4 \texttt{READ\_SNAPSHOT} and 74 \texttt{READ\_TRACE}. Of these, 73 frames carry seven steps each and one frame carries one step, which together cover the 512 kept steps. The command flow of Table~\ref{tab:flow} has a different breakdown, because it also contains invalid frames and only three valid trace frames.
 Clamp events inside the network were not counted. Its membrane potential is compared only at the last step (Section~\ref{sec:limits}), so a clamp there would not be seen; the largest exact synaptic sums (before saturation) were 1,084 raw in the command flow and 160 to 378 raw in the E/I conditions (Section~\ref{sec:network-hw}). The saturation of the single neuron is reported in Section~\ref{sec:sat}.
 
 
@@ -457,7 +457,7 @@ For $N=512$ the weight matrix would be 2~Mbit, more than the roughly 828~Kbit of
 
 \begin{table}[t]
 \centering
-\caption{Full design at $N=256$ (nextpnr-himbaechel, GW2AR-18). Source: \texttt{fpga/build/make\_network\_top\_2026-11-04.log}, a complete rebuild (\texttt{make -B TOP=network\_top}); the maximum clock is the critical-path report after routing.}
+\caption{Full design at $N=256$ (nextpnr-himbaechel, GW2AR-18). Source: \texttt{fpga/build/\allowbreak make\_network\allowbreak\_top\allowbreak\_2026-11-04.log}, a complete rebuild (\texttt{make -B TOP=network\_top}); the maximum clock is the critical-path report after routing.}
 \label{tab:res}
 \setlength{\tabcolsep}{9pt}
 \begin{tabular}{lrr}
