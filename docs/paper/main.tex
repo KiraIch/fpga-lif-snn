@@ -11,7 +11,7 @@
 \usepackage{hyperref}
 \graphicspath{{../}}
 
-\title{Bit-Level Verification of a Fixed-Point LIF Neuron and a 256-Neuron Spiking Network on a Low-Cost FPGA}
+\title{Bit-Level Verification of Membrane Potential and Spikes in a Fixed-Point LIF Neuron and a 256-Neuron Spiking Network}
 \author{ChiaAn Lin\thanks{Corresponding author: \href{mailto:ntuhibiki@gmail.com}{ntuhibiki@gmail.com}}\\
 Master Program for Health and Intelligent Medicine
 }
@@ -81,7 +81,7 @@ A right shift by $k$ divides by $2^k$, so the time constants are $\Delta t/\tau 
 $V$ and $I$ are signed 16-bit numbers in Q8.8 format (raw value = real value $\times 256$).
 Three rules fix the arithmetic exactly:
 \begin{itemize}
-\item Every addition saturates to $[-32768,\,32767]$ after each addition, from left to right. Nothing wraps.
+\item In the single-neuron update of Eqs.~(1) and (2), every addition saturates to $[-32768,\,32767]$ after each addition, from left to right. Nothing wraps. The network input has its own rule (Section~\ref{sec:netinput}): the sum over sources is exact and the total saturates once.
 \item Right shifts are arithmetic (they round toward $-\infty$).
 \item $V_{\mathrm{rest}} - V$ is computed with more than 16 bits before the shift, because the difference of two 16-bit values may need 17 bits.
 \end{itemize}
@@ -90,6 +90,7 @@ The mutation tests in Section~\ref{sec:verify} include the logical shift. They d
 The reference is a short Python function (\texttt{model/fixed.py}); the hardware must match it exactly.
 
 \subsection{Network}
+\label{sec:netinput}
 All neurons share one parameter set. Let $s_j[t]$ be the spike flag of neuron $j$ at step $t$. The input of neuron $i$ at step $t$ is
 \begin{equation}
 x_i[t] = \mathrm{sat}\!\left(\sum_j \left(W_{ji} \ll w_{\mathrm{shift}}\right) s_j[t-1] \;+\; \mathrm{ext}_i\right),
@@ -98,6 +99,8 @@ where $W_{ji}$ is a signed 8-bit weight from neuron $j$ to neuron $i$ (self-conn
 The sum over sources is exact, the external input is added to it, and the total saturates once.
 This differs from the single-neuron rule on purpose. The hardware visits the sources in a fixed order, and an exact sum followed by a single saturation gives the same result for every order.
 A spike at step $t$ reaches the inputs at step $t+1$.
+
+Initial state: before step 0 every neuron is at rest ($V=0$, $I=0$, no refractory time), no neuron has spiked, so $s_j[-1]=0$ for all $j$, and the synaptic sum is empty. The external input $\mathrm{ext}_i$ is added from step 0. At the start of each run the hardware clears the state, the spike flags and both accumulators (the initialisation phase of \texttt{rtl/network.v}), so the board starts from the same state as the model.
 
 \section{Hardware}
 \label{sec:hardware}
@@ -179,11 +182,12 @@ The host writes the parameters, confirms them with a status read, runs the neuro
 
 \paragraph{Board, network.}
 The host sends the full command flow of 682 frames (70,168 bytes in, 1,892 bytes out) and compares every reply byte with the model's prediction.
-The flow has 682 frames (Table~\ref{tab:flow}). Seven are deliberately invalid. Each must be refused without changing any state, and the final status read checks that the error counter matches. The flow has no unknown command, no misaligned frame, no run of consecutive invalid frames, and no command sent while the board is busy: the host waits for each full reply and, after \texttt{RUN}, for the estimated run time. Those cases are tested in simulation only, in \texttt{sim/tb\_cmd\_test.v} (unknown command, bad checksum, leading garbage) and \texttt{sim/tb\_decoder\_busy.v} (commands while busy).
+The flow has 682 frames (Table~\ref{tab:flow}). Seven are deliberately invalid. Each must be refused without changing any state, and the final status read checks that the error counter matches. The flow itself has no unknown command, no misaligned frame, no run of consecutive invalid frames, and no command sent while the board is busy: the host waits for each full reply and, after \texttt{RUN}, for the estimated run time. Some of these cases were run on the board separately, on the single-neuron build (Section~\ref{sec:robust}): an unknown command, a bad checksum, a truncated frame and a command sent while busy. Leading junk bytes and runs of consecutive invalid frames are tested in simulation only, with the stream of \texttt{host/gen\_cmd\_vectors.py} in \texttt{sim/tb\_cmd\_decoder.v}. Commands sent while the decoder is busy are also checked in simulation, in \texttt{sim/tb\_decoder\_busy.v}.
 \begin{table}[t]
 \centering
 \caption{Frames in the 682-frame command flow at $N=256$, by command, and the deliberately invalid frames among them.}
 \label{tab:flow}
+\setlength{\tabcolsep}{7pt}
 \begin{tabular}{lrl}
 \toprule
 Command & Frames & Invalid frames \\
@@ -222,6 +226,7 @@ Figure~\ref{fig:trace} shows the first 100 steps of parameter set A, and Figure~
 \centering
 \caption{Single neuron: board against model. Values are real numbers; the Q8.8 raw value is the real value times 256.}
 \label{tab:m2}
+\setlength{\tabcolsep}{7pt}
 \begin{tabular}{lrrrrrrrr}
 \toprule
 Set & $\theta$ & $V_{\mathrm{reset}}$ & $V_{\mathrm{rest}}$ & $k_m$ & $k_s$ & refrac & Samples & Mismatches \\
@@ -273,7 +278,7 @@ Random & 200 & 180,000 & 0 & 0 & 195 \\
 \subsection{Saturation on the board}
 \label{sec:sat}
 The single-neuron update has four saturating additions: the decay of $I$ ($i_1$), the input added to $I$ ($i_2$), the leak of $V$ ($v_1$) and the current added to $V$ ($v_2$).
-The decay ($) and the leak ($) cannot saturate. The decay $I-(I\gg k_s)$ lies between $I$ and zero, and the leak $V+((V_{\mathrm{rest}}-V)\gg k_m)$ lies between $V$ and $V_{\mathrm{rest}}$, so both stay in the 16-bit range.
+The decay ($i_1$) and the leak ($v_1$) cannot saturate. The decay $I-(I\gg k_s)$ lies between $I$ and zero, and the leak $V+((V_{\mathrm{rest}}-V)\gg k_m)$ lies between $V$ and $V_{\mathrm{rest}}$, so both stay in the 16-bit range.
 The upper limit of $v_2$ cannot change the output either. A value clamped there is $32{,}767 \ge \theta$, so the neuron spikes, or it is refractory and the potential is discarded; in both cases the stored potential is $V_{\mathrm{reset}}$, as it would be without the clamp.
 The three clamps that can change the output are the upper and lower limits of $i_2$ and the lower limit of $v_2$; they need a test.
 
@@ -319,6 +324,7 @@ S4 & $-128$ & $-256$ & 0 & 4 & 3 & 2 \\
 The 682-frame flow at $N=256$ gave 1,892 reply bytes, all identical to the model, in 44.4~s (run of 2026-11-06, with the current \texttt{board\_network\_test.py}; log in \texttt{results/}).
 Five E/I conditions then ran on the board, each with 745 frames: $(f_{\mathrm{inh}}, w_{\mathrm{inh}}, w_{\max}, e_{\max}) = (0.2, 1, 10, 30)$, $(0.5, 1, 10, 30)$, $(0.5, 0.5, 10, 30)$, $(0.5, 2, 10, 30)$ and $(0.3, 1.5, 20, 10)$.
 For each, the spike counts, the last-step snapshot and the spikes of the first 512 steps matched the full model.
+Each run sent 745 frames: the starting \texttt{READ\_STATUS}, 1 \texttt{WRITE\_PARAM}, 656 \texttt{WRITE\_WEIGHTS} (100 weights each), 3 \texttt{SET\_INPUT}, 1 \texttt{RUN}, 1 \texttt{READ\_STATUS}, 4 \texttt{READ\_COUNTS}, 4 \texttt{READ\_SNAPSHOT} and 74 \texttt{READ\_TRACE}. The 74 trace frames cover the 512 kept steps at seven per frame, the last frame carrying one step. The command flow of Table~\ref{tab:flow} has a different breakdown, because it also contains invalid frames and only three valid trace frames.
 Clamp events inside the network were not counted. Its membrane potential is compared only at the last step (Section~\ref{sec:limits}), so a clamp there would not be seen; the largest exact synaptic sums (before saturation) were 1,084 raw in the command flow and 160 to 378 raw in the E/I conditions (Section~\ref{sec:network-hw}). The saturation of the single neuron is reported in Section~\ref{sec:sat}.
 
 
@@ -345,11 +351,11 @@ Random seed & 20261103 & 20261104 (external input: $20261104 \times 1000 + e_{\m
 
 \subsection{Protocol robustness on the board}
 \label{sec:robust}
-The command flow does not send the malformed frames that the simulation tests cover, so four such cases were run on the board separately (\texttt{host/protocol\_robustness\_board\_test.py}, \texttt{results/}). Table~\ref{tab:robust} gives the outcome. Each case was checked against the expected replies and the change of the error counter, and all four matched the prediction.
+The command flow does not send malformed frames, so four such cases and a recovery read were run on the board separately (\texttt{host/protocol\_robustness\_board\_test.py}, \texttt{results/}). Table~\ref{tab:robust} gives the outcome. Cases 1 to 4 were checked against the expected replies and the change of the error counter, and all four matched the prediction. Case 3 receives a \texttt{READ\_RECORD} reply, which only the single-neuron build sends (Section~\ref{sec:limits}), so these tests ran on that build; the busy case was not run on the network build.
 
 \begin{table}[t]
 \centering
-\caption{Malformed frames on the board. The error counter is read before and after each case.}
+\caption{Malformed frames on the board, single-neuron build (\texttt{neuron\_top}). The error counter is read before and after cases 1 to 4; case 5 only checks that the reply arrives.}
 \label{tab:robust}
 {\small\begin{tabular}{p{0.8cm}p{6.4cm}p{4.4cm}p{2.2cm}}
 \toprule
@@ -359,12 +365,12 @@ Case & Sent & Replies & Error counter \\
 2 & unknown command \texttt{0x0A} & none & $+1$ \\
 3 & \texttt{READ\_RECORD}, then \texttt{READ\_STATUS} while the reply is being sent (busy) & \texttt{READ\_RECORD} reply only & $+1$ \\
 4 & truncated frame \texttt{A5 06 00}, then a valid \texttt{READ\_STATUS} & none & $+1$ \\
-5 & a further \texttt{READ\_STATUS}, sent after case 4 & \texttt{READ\_STATUS} reply & not counted \\
+5 & a further \texttt{READ\_STATUS}, sent after case 4 & \texttt{READ\_STATUS} reply & not read \\
 \bottomrule
 \end{tabular}}
 \end{table}
 
-In case 4 the decoder has no time-out: it takes the first byte of the valid frame as the checksum of the truncated one, and the valid frame is lost. Case 5 is a further \texttt{READ\_STATUS}, sent after case 4; it is answered, so the decoder recovers on the next frame boundary. Only one truncated frame was tested.
+In case 4 the decoder has no time-out: it takes the first byte of the valid frame as the checksum of the truncated one, and the valid frame is lost. Case 5 is a further \texttt{READ\_STATUS}, sent after case 4. Its reply arrived, so the decoder accepted the next frame after the truncated one. The log does not compare the counter values after case 5, so it does not show that the error counter was left unchanged. Only one truncated frame was tested.
 
 \subsection{E/I demonstration (model)}
 \label{sec:ei}
@@ -453,6 +459,7 @@ For $N=512$ the weight matrix would be 2~Mbit, more than the roughly 828~Kbit of
 \centering
 \caption{Full design at $N=256$ (nextpnr-himbaechel, GW2AR-18). Source: \texttt{fpga/build/make\_network\_top\_2026-11-04.log}, a complete rebuild (\texttt{make -B TOP=network\_top}); the maximum clock is the critical-path report after routing.}
 \label{tab:res}
+\setlength{\tabcolsep}{9pt}
 \begin{tabular}{lrr}
 \toprule
 Resource & Used & Available \\
@@ -476,7 +483,7 @@ Maximum clock, after routing & 38.75~MHz & 27~MHz target, met \\
 \item \textbf{Mutation analysis.} Eighteen hand-written mutants were run (Table~\ref{tab:mut}), each against one checker and all in simulation. No full kill matrix was produced. The mutated copies are not kept as files in the repository, so the table is a record of the checks, not reproducible code.
 \item \textbf{No netlist simulation.} The block-RAM models of the installed toolchain are empty. The Gowin block-RAM mapping printed ``range select out of bounds'' warnings for the network build (log \texttt{make\_network\_top\_2026-11-04.log}, in \texttt{fpga/build/}). Each sets some bits of a memory port to undefined. The log does not name the memories, and we did not analyse the netlist to show that the undefined bits are never used. The board runs are the only evidence, and they cover only the cases we ran.
 \item \textbf{Parameter space.} All neurons share one parameter set, there is no noise source, and the grid sweep fixes $\theta$, $V_{\mathrm{reset}}$ and $V_{\mathrm{rest}}$ (the random sweep covers them). The thresholds tested on the board are 64 to 1,024 raw in the random sweep, 128, 256 and 512 in the other sets, and $-32{,}768$ and $-128$ in S3 and S4. Other negative thresholds were not tested.
-\item \textbf{Protocol.} The additive checksum does not detect swapped bytes. The decoder has no time-out, so a corrupted length field can misalign the frame stream. Adding one would need an RTL change, new simulation tests and a new board run, and we have not made that change. Reply behaviour depends on the build. In the network build, \texttt{READ\_RECORD} is accepted and counted as successful but sends no reply. In the single-neuron build, \texttt{READ\_TRACE} is accepted without a reply. The host sends \texttt{READ\_RECORD} only to the single-neuron build, where it replies, and \texttt{READ\_TRACE} only to the network build, where it replies. The board has no reset command, so its counters persist until the bitstream is reloaded, and the command-flow test must start from a freshly loaded board.
+\item \textbf{Protocol.} The additive checksum does not detect swapped bytes. The decoder has no time-out, so a corrupted length field can misalign the frame stream. Adding one would need an RTL change, new simulation tests and a new board run, and we have not made that change. Reply behaviour depends on the build. In the network build, \texttt{READ\_RECORD} is accepted and counted as successful but sends no reply. In the single-neuron build, \texttt{READ\_TRACE} is accepted without a reply. The host sends \texttt{READ\_RECORD} only to the single-neuron build, where it replies, and \texttt{READ\_TRACE} only to the network build, where it replies. The board tests of Table~\ref{tab:robust} ran on the single-neuron build, and the busy case was not run on the network build. The board has no reset command, so its counters persist until the bitstream is reloaded, and the command-flow test must start from a freshly loaded board.
 \item \textbf{Timing.} The wait after a run is computed from the number of steps as a worst-case heuristic. We did not verify it against the time the board actually needs.
 \item \textbf{Design choices.} The protocol, the weight scale $w_{\mathrm{shift}}$ and the choice of the E/I test network are our own choices. They were not tuned or compared with alternatives.
 \item \textbf{Connectivity.} The nominal connection probability is $8/N$, but zero weights are excluded, so the effective density is lower. For $f_{\mathrm{inh}}=0.2$ the networks have on average 2.8\% nonzero entries of the $256 \times 256$ matrix (range 2.7\% to 2.9\%), against a nominal 3.1\%.

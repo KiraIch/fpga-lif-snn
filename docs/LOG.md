@@ -749,3 +749,29 @@
 - Gowin 區塊記憶體 range 警告的網表分析。
 - 512 到 600 步之間的 spike 時序比對（需要讀回第 512 步的狀態，或更長的軌跡）。
 - Zenodo DOI 與 GitHub release：等審查員通過後才產生。
+
+## 2026-11-06 審查員 B 第四輪：標題與協定、初始狀態的文字修正
+
+**完成**
+
+- 標題改為 "Bit-Level Verification of Membrane Potential and Spikes in a Fixed-Point LIF Neuron and a 256-Neuron Spiking Network"（審查員建議的寫法，去掉 "on a Low-Cost FPGA"）。
+- 5.3 修正遺失的符號：`$i_1$`、`$v_1$`（原文為 `($)`，是先前一次字串替換造成的）。
+- 2.2 與 2.3 的飽和規則分開敘述：2.2 限定於單顆神經元的更新（式 (1)(2)），網路輸入另見 2.3（`sec:netinput`，式 (3)：和精確、只飽和一次）。
+- 2.3 新增初始狀態：每顆神經元在 V=0、I=0、無不反應時間，s_j[-1]=0，累加和為空，ext 從第 0 步加入；RTL 在每次 RUN 開始時清空狀態、spike 旗標與兩個累加器（`rtl/network.v` 的 S_INIT）。
+- 4 節的協定敘述修正：unknown command、bad checksum、truncated frame 與 busy 有部分在板上測過（Table 8，single-neuron build）；leading junk 與連續無效幀只在模擬（`host/gen_cmd_vectors.py` → `sim/cmd_expect.mem` → `sim/tb_cmd_decoder.v`）。原文寫成 `sim/tb_cmd_test.v`，該檔並不含這些案例，已更正。
+- Table 8 標明 single-neuron build（`neuron_top`）：case 3 收到 READ_RECORD 回覆，只有該 build 會回覆，所以測試是在該 build 上做的。busy 案例沒有在 network build 上測。
+- Table 8 case 5：原文說「檢查 error counter」，但日誌只確認回覆有到。已改為「not read」，並註明日誌沒有比對 case 5 後的計數值。
+- 5.4 補上 E/I 每次執行 745 幀的逐命令拆解：1+1+656+3+1+1+4+4+74（74 幀 READ_TRACE 覆蓋 512 步，最後一幀 1 步）。與 Table 2 的命令流拆解不同（後者含無效幀，READ_TRACE 有效幀為 3）。
+- Table 2、3、11 加大欄距（tabcolsep）；文字擷取時欄位會黏在一起，目視檢查已分開。Overfull 警告為 0。
+
+**觀察（審查員指出但原文沒有的字）**
+
+- 原文沒有 "unpacked"，只有 "unpaced"（摘要、1、4.4 節）。
+- 原文沒有 "[0xAl5]"、"krm"、"tb_cmd.test.v"、"negative_control...1og"；原文分別是 `[0xA5]`、`$k_m$`、`tb\_cmd\_test.v`、`.log`。
+
+**還沒做（需要板子或另外的工作）**
+
+- Table 8 case 5 的計數器比對：需要改 `host/protocol_robustness_board_test.py` 並在板上重跑。
+- busy 案例在 network build 上的板上測試：需要燒錄 network build 後重跑。
+- E/I 板上執行的日誌不在 `results/`（只有模型的 CSV）；要保存需要在板上重跑 `host/ei_board_test.py`。
+- 「745 幀 vs 512 步」的 CI 斷言（審查員建議）：尚未加入。
