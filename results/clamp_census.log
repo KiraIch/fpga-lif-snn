@@ -1,4 +1,4 @@
-﻿Clamp census for model/fixed.py (raw Q8.8 values; + upper limit, - lower limit)
+Clamp census for model/fixed.py (raw Q8.8 values; + upper limit, - lower limit)
 
 == run_trial.py set C, 20 inputs (-0.1..0.375), 1000 steps
    clamp events: i2+: 4701, v2-: 3705
@@ -43,6 +43,16 @@
    S2 x_raw  -1000: i2-: 68, v2-: 93
    S2 x_raw  +4000: i2+: 92
    S2 x_raw +32767: i2+: 99
+   S3 x_raw -32768: i2-: 99
+   S3 x_raw  -4000: i2-: 92
+   S3 x_raw  -1000: i2-: 68
+   S3 x_raw  +4000: i2+: 92
+   S3 x_raw +32767: i2+: 99
+   S4 x_raw -32768: i2-: 99, v2-: 99
+   S4 x_raw  -4000: v2-: 97
+   S4 x_raw  -1000: v2-: 90
+   S4 x_raw  +4000: none
+   S4 x_raw +32767: i2+: 99
 
 == single-neuron search: which positions can be reached at all (100 steps)
    x_raw -32768: i2-: 99, v2-: 99

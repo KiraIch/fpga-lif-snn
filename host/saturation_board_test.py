@@ -1,7 +1,8 @@
 """Saturation board test: one LIF neuron on the Tang Nano 20K, driven into the 16-bit limits.
 
 host/run_trial.py checks 20 moderate inputs and never reaches the limits in the sets A and B.
-This script uses two parameter sets with maximum shifts (k_m = k_s = 15), so the synaptic
+Sets S1 and S2 use maximum shifts (k_m = k_s = 15); sets S3 and S4 use negative thresholds
+(theta = -32768 and -128), so the lower clamp of V can decide a spike. Together the sets drive the synaptic
 current and the membrane potential hit -32768 and +32767. Inputs are -128.0, -15.625, -3.90625,
 +15.625 and +127.99609375 (raw -32768, -4000, -1000, +4000, +32767).
 
@@ -36,6 +37,9 @@ from uart_loopback import open_port  # noqa: E402
 SAT_SETS = {
     "S1": dict(theta=512, v_reset=0, v_rest=0, k_m=15, k_s=15, refrac=0),
     "S2": dict(theta=512, v_reset=-128, v_rest=0, k_m=15, k_s=15, refrac=7),
+    # negative thresholds: the lower clamp of V decides a spike only when theta = -32768
+    "S3": dict(theta=-32768, v_reset=0, v_rest=0, k_m=15, k_s=15, refrac=0),
+    "S4": dict(theta=-128, v_reset=-256, v_rest=0, k_m=4, k_s=3, refrac=2),
 }
 SAT_INPUTS = [-128.0, -15.625, -3.90625, 15.625, 127.99609375]
 SAT_STEPS = 100

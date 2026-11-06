@@ -4,14 +4,14 @@ Files behind the numbers in the paper (`docs/paper/main.tex`). Each file is prod
 
 | File | Produced by | Used in |
 |---|---|---|
-| `sweep_grid.csv` | `host/sweep.py` (grid), board run | Table 2 (grid row) |
-| `sweep_random.csv` | `host/sweep.py` (random, seed 20261103), board run | Table 2 (random row) |
-| `m2_trial_A.json`, `m2_trial_B.json`, `m2_trial_C.json` | `host/run_trial.py`, board run | Table 1, Figures 1 and 2 |
-| `ei_full_sweep.csv` | `host/ei_full_sweep.py` (model, 10 networks per combination) | Table 4 (E/I), monotonicity |
-| `make_network_top_2026-11-04.log` | `make -B TOP=network_top` in `fpga/` (Yosys, nextpnr-himbaechel, gowin_pack) | Table 5 (resources, maximum clock after routing) |
-| `clamp_census.log` | `python host/clamp_census.py` (model only, traced copy of `fixed.step`) | Table 3 (clamp counts, saturation subsection) |
+| `sweep_grid.csv` | `host/sweep.py` (grid), board run | Table 4 (grid row) |
+| `sweep_random.csv` | `host/sweep.py` (random, seed 20261103), board run | Table 4 (random row) |
+| `m2_trial_A.json`, `m2_trial_B.json`, `m2_trial_C.json` | `host/run_trial.py`, board run | Table 3, Figures 1 and 2 |
+| `ei_full_sweep.csv` | `host/ei_full_sweep.py` (model, 10 networks per combination) | Table 6 (E/I), monotonicity |
+| `make_network_top_2026-11-04.log` | `make -B TOP=network_top` in `fpga/` (Yosys, nextpnr-himbaechel, gowin_pack) | Table 7 (resources, maximum clock after routing) |
+| `clamp_census.log` | `python host/clamp_census.py` (model only, traced copy of `fixed.step`) | Table 5 (clamp counts, saturation subsection) |
 | `flash_neuron_top_2026-11-06.log` | `make flash TOP=neuron_top` in `fpga/` (SRAM) | Saturation board test (bitstream used) |
-| `saturation_board_test_2026-11-06.log` | `python3 host/saturation_board_test.py /dev/ttyUSB1`, board run | Saturation subsection (sets S1, S2: 1,000 samples, 0 mismatches) |
+| `saturation_board_test_2026-11-06.log` | `python3 host/saturation_board_test.py /dev/ttyUSB1`, board run | Saturation subsection (sets S1 to S4: 2,000 samples, 0 mismatches) |
 
 Notes:
 

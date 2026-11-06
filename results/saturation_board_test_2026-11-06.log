@@ -25,5 +25,31 @@ set S2: samples 500, mismatches 0, failed reads 0  -> PASS
   set S2 raw  +4000 clamps {'i2+': 92}
   set S2 raw +32767 clamps {'i2+': 99}
 
-board counters at end: {'theta': 512, 'v_reset': -128, 'v_rest': 0, 'k_m': 15, 'k_s': 15, 'refrac': 7, 'ok': 55, 'err': 0}
+set S3: parameters confirmed: {'theta': -32768, 'v_reset': 0, 'v_rest': 0, 'k_m': 15, 'k_s': 15, 'refrac': 0}
+  input -128.0000 (raw -32768): PASS  mismatches 0/100  spikes hw 100 model 100  V range 0..0
+  input -15.6250 (raw -4000): PASS  mismatches 0/100  spikes hw 100 model 100  V range 0..0
+  input -3.9062 (raw -1000): PASS  mismatches 0/100  spikes hw 100 model 100  V range 0..0
+  input +15.6250 (raw +4000): PASS  mismatches 0/100  spikes hw 100 model 100  V range 0..0
+  input +127.9961 (raw +32767): PASS  mismatches 0/100  spikes hw 100 model 100  V range 0..0
+set S3: samples 500, mismatches 0, failed reads 0  -> PASS
+  set S3 raw -32768 clamps {'i2-': 99}
+  set S3 raw  -4000 clamps {'i2-': 92}
+  set S3 raw  -1000 clamps {'i2-': 68}
+  set S3 raw  +4000 clamps {'i2+': 92}
+  set S3 raw +32767 clamps {'i2+': 99}
+
+set S4: parameters confirmed: {'theta': -128, 'v_reset': -256, 'v_rest': 0, 'k_m': 4, 'k_s': 3, 'refrac': 2}
+  input -128.0000 (raw -32768): PASS  mismatches 0/100  spikes hw 0 model 0  V range -32768..-32768
+  input -15.6250 (raw -4000): PASS  mismatches 0/100  spikes hw 0 model 0  V range -32768..-4000
+  input -3.9062 (raw -1000): PASS  mismatches 0/100  spikes hw 0 model 0  V range -32768..-1000
+  input +15.6250 (raw +4000): PASS  mismatches 0/100  spikes hw 34 model 34  V range -256..-256
+  input +127.9961 (raw +32767): PASS  mismatches 0/100  spikes hw 34 model 34  V range -256..-256
+set S4: samples 500, mismatches 0, failed reads 0  -> PASS
+  set S4 raw -32768 clamps {'i2-': 99, 'v2-': 99}
+  set S4 raw  -4000 clamps {'v2-': 97}
+  set S4 raw  -1000 clamps {'v2-': 90}
+  set S4 raw  +4000 clamps none
+  set S4 raw +32767 clamps {'i2+': 99}
+
+board counters at end: {'theta': -128, 'v_reset': -256, 'v_rest': 0, 'k_m': 4, 'k_s': 3, 'refrac': 2, 'ok': 164, 'err': 0}
 SATURATION BOARD TEST: PASS

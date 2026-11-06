@@ -95,6 +95,7 @@
 - **理由：** 追蹤版模型顯示參數組 C（k_m = k_s = 15）與網格、隨機掃描都碰到了 i2+ 與 v2−，板上每一步與模型一致。先前論文說「板上沒有碰到飽和」是錯的。飽和測試（S1、S2）補上 i2−。
 - **影響：** 論文的摘要、結果、限制與結論已改寫。RTL 與 `model/fixed.py` 沒有改動。
 - **驗證：** `host/clamp_census.py` 輸出 `results/clamp_census.log`；`host/saturation_board_test.py` 上板 PASS（1,000 個樣本、0 個不一致），log 在 `results/saturation_board_test_2026-11-06.log`。
+- **補充（2026-11-06，審查員 B）：** 下鉗位只在 θ = −32768 時會改變發放，因此增加 S3（θ = −32768）與 S4（θ = −128）。S3、S4 上板各 500 個樣本、0 個不一致，記錄在同一份 `results/saturation_board_test_2026-11-06.log`。
 - **狀態：** 草稿（待作者審閱）。
 
 ## 待決定

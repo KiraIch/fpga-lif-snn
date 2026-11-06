@@ -23,12 +23,12 @@ Master Program for Health and Intelligent Medicine
 Spiking neuron models are small enough to run on inexpensive FPGAs, but a hardware result is only useful for model-based experiments if one can state exactly how it differs from the model.
 We present a leaky integrate-and-fire (LIF) neuron and a 256-neuron network on a low-cost FPGA (Tang Nano 20K, Gowin GW2AR-18), and we test both against a Python reference model.
 The model uses signed Q8.8 fixed-point state, saturating additions and shift-based time constants, so no multiplier is needed.
-On the board, the single neuron matched the model at every step of 60,000 samples from three hand-picked parameter sets and of 2,023,200 samples from a sweep of 2,248 parameter sets.
-A time-multiplexed network with spike-driven synapses, controlled over a UART link, matched the model in every reply of a 682-frame command flow, and in the spike counts, the final-state snapshot and the first 512 steps of spikes of five excitation/inhibition (E/I) conditions.
+On the board, the single neuron matched the model at every step of 60,000 samples from three hand-picked parameter sets and of 2,023,200 samples from a sweep of 2,248 parameter sets, all with constant input currents.
+A time-multiplexed network with spike-driven synapses, controlled over a UART link, matched the model in every reply of a 682-frame command flow, and in the spike counts, the final-state snapshot and the first 512 steps of spikes of five excitation/inhibition (E/I) conditions. Spike timing after step 512 was not compared, and the membrane potential of the network only at the last step.
 Mutation tests show that the checkers can fail.
 The full design uses 12\% of the logic and 98\% of the block RAM, and meets timing at 38.75~MHz after place and route, against a 27~MHz clock.
-In the model, the mean firing rate of the network falls monotonically as the inhibitory fraction rises, in every combination of the sweep.
-On the board, the current reached its upper and lower limits and the potential its lower limit, and every saturated step matched the model; the upper limit of the potential cannot change the output. The membrane potential of the network was compared only at the last step, so saturation inside the network was not checked.
+In the model, the mean firing rate of the network falls monotonically as the inhibitory fraction rises, in all 240 networks of the sweep; at low inhibition the rate is limited by the refractory ceiling.
+On the board, the current reached its upper and lower limits and the potential its lower limit, and every saturated step matched the model, including a negative threshold where the lower limit decides a spike; the upper limit of the potential cannot change the output. The membrane potential of the network was compared only at the last step, so saturation inside the network was not checked.
 We also report the limits we found: a USB--UART link that lost bytes in long unpaced bursts, a command decoder without a time-out, and a spike trace that covers only the first 512 steps.
 The hardware is validated against the model only; we make no claim about biological validity.
 \end{abstract}
@@ -120,6 +120,8 @@ Synaptic input is spike driven: when neuron $j$ spikes, its weight row is added 
 Two accumulators alternate, one read while the other is written.
 Both phases are pipelined with a one-cycle read latency. The read order keeps consecutive reads on different neurons, so the pipeline never reads a value that is still being written.
 
+The synaptic sum is exact in the hardware as well. Each source contributes its weight shifted left by two, which lies in $[-512, 508]$. Over 256 sources the sum lies in $[-131{,}072, 130{,}048]$, which needs 18 bits. The accumulator is 24 bits wide (\texttt{rtl/network.v}), so adding the 16-bit external input cannot overflow at any step, and the total is then saturated once.
+
 The board does not keep the full state of every step. At $N=256$ and 1,024 steps, the full state would need 4,352~Kbit ($256 \times 1{,}024 \times 17$ bits), and the block RAM holds about 828~Kbit.
 The board therefore keeps, per neuron, a 16-bit spike count and a 17-bit snapshot of the last step (33 bits in total), and the spike flags of every neuron for the first 512 steps of a run (1 bit per neuron and step, 128~Kbit), returned seven steps per frame.
 The membrane potential is therefore compared only at the last step, which is the main limit of the network verification (Section~\ref{sec:limits}).
@@ -135,17 +137,68 @@ The network core was checked against the model for $N=16, 64, 256$ over 3,200, 1
 
 \paragraph{Mutation tests.}
 A checker that has never failed does not show that it can fail.
-Each checker was therefore run on deliberately broken copies of the design. Each of the roughly 15 hand-written mutants was caught by its checker.
-Examples: replacing the arithmetic shift with a logical shift (single neuron); a weight shift of 3, a missing last target, no spike delivery, and a write to the wrong accumulator (network core); swapped input bytes, an off-by-one range check and a wrong read-modify-write timing (full design); a changed bit order, a step address off by one, a limit of 513 instead of 512 steps and a limit of eight instead of seven steps per frame (spike trace); and a status read that ignores the busy signal (busy test).
+Each checker was therefore run on deliberately broken copies of the design. Table~\ref{tab:mut} lists the 18 hand-written mutants and the checker that caught each one. All 18 were caught. Each was run against one checker, not against all of them, and all were run in simulation; none was run on the board or on a netlist.
 This is not a complete mutation analysis, and it does not show that every possible error is caught.
 An early byte-level testbench of the single neuron exposed a real design error: a second run was sent while the previous reply was still being sent, which overwrote the record memory. The busy rule of Section~\ref{sec:hardware} is the fix.
+\begin{table}[t]
+\centering
+\caption{Hand-written mutants and the checker that caught each one. All runs were in simulation. The full design is \texttt{rtl/network\_top.v}; the network core is \texttt{rtl/network.v}. The single-neuron checker is the cocotb test \texttt{test\_lif\_core.py}.}
+\label{tab:mut}
+{\small\begin{tabular}{rlll}
+\toprule
+\# & Mutant & Unit & Checker \\
+\midrule
+1 & arithmetic right shift replaced by logical shift & single neuron & cocotb \\
+2 & weight shift $w_{\mathrm{shift}}=3$ & network core & \texttt{tb\_network.v} \\
+3 & last target not added & network core & \texttt{tb\_network.v} \\
+4 & synaptic input not delivered & network core & \texttt{tb\_network.v} \\
+5 & write to the wrong accumulator buffer & network core & \texttt{tb\_network.v} \\
+6 & record stores the previous $V$ & single neuron, byte level & \texttt{tb\_neuron\_top.v} \\
+7 & reply checksum $+1$ & command path & \texttt{tb\_cmd\_test.v} \\
+8 & request checksum check disabled & command decoder & \texttt{tb\_cmd\_decoder.v} \\
+9 & $k_m$ range check removed & command decoder & \texttt{tb\_cmd\_decoder.v} \\
+10 & UART register fixed at 0 & UART echo & \texttt{tb\_uart\_echo.v} \\
+11 & input bytes swapped & full design & \texttt{tb\_network\_top.v} \\
+12 & range check off by one & full design & \texttt{tb\_network\_top.v} \\
+13 & counter timing error & full design & \texttt{tb\_network\_top.v} \\
+14 & spike trace bit order reversed & full design & \texttt{tb\_network\_top.v} \\
+15 & trace step address off by one & full design & \texttt{tb\_network\_top.v} \\
+16 & trace limit 513 instead of 512 steps & full design & \texttt{tb\_network\_top.v} \\
+17 & trace limit 8 instead of 7 steps per frame & full design & \texttt{tb\_network\_top.v} \\
+18 & \texttt{READ\_STATUS} ignores busy & command decoder & \texttt{tb\_decoder\_busy.v} \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
 
 \paragraph{Board, single neuron.}
 The host writes the parameters, confirms them with a status read, runs the neuron, reads every step's $V$ and spike back and compares them with the model.
 
 \paragraph{Board, network.}
 The host sends the full command flow of 682 frames (70,168 bytes in, 1,892 bytes out) and compares every reply byte with the model's prediction.
-The flow contains deliberately invalid frames, which must be refused without changing any state.
+The flow has 682 frames (Table~\ref{tab:flow}). Seven are deliberately invalid. Each must be refused without changing any state, and the final status read checks that the error counter matches. The flow has no unknown command, no misaligned frame, no run of consecutive invalid frames, and no command sent while the board is busy: the host waits for each full reply and, after \texttt{RUN}, for the estimated run time. Those cases are tested in simulation only, in \texttt{sim/tb\_cmd\_test.v} (unknown command, bad checksum, leading garbage) and \texttt{sim/tb\_decoder\_busy.v} (commands while busy).
+\begin{table}[t]
+\centering
+\caption{Frames in the 682-frame command flow at $N=256$, by command, and the deliberately invalid frames among them.}
+\label{tab:flow}
+\begin{tabular}{lrl}
+\toprule
+Command & Frames & Invalid frames \\
+\midrule
+\texttt{WRITE\_PARAM} & 2 & 1 (checksum) \\
+\texttt{WRITE\_WEIGHTS} & 657 & 1 (runs past the last weight) \\
+\texttt{SET\_INPUT} & 3 & 0 \\
+\texttt{RUN} & 1 & 0 \\
+\texttt{READ\_STATUS} & 3 & 0 \\
+\texttt{READ\_COUNTS} & 5 & 1 (runs past the last neuron) \\
+\texttt{READ\_SNAPSHOT} & 4 & 0 \\
+\texttt{READ\_TRACE} & 7 & 4 (ends one step past the trace; starts past it; count 0; count 8) \\
+\midrule
+Total & 682 & 7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 The E/I conditions are compared in the same way: spike counts, last-step snapshot and the spikes of the first 512 steps against the full model.
 
 \paragraph{No netlist simulation.}
@@ -222,8 +275,8 @@ The upper limit of $v_2$ cannot change the output either. A value clamped there 
 The other three limits change the stored state or the spike decision, and they need a test.
 
 Table~\ref{tab:sat} lists the runs that reached them. The board does not report $I$, so a clamp of $I$ is seen only through the potential it produces. Clamp counts come from a traced copy of the model (\texttt{host/clamp\_census.py}, output in \texttt{results/clamp\_census.log}); the copy is asserted to equal \texttt{fixed.step} at every step.
-The saturation test (\texttt{host/saturation\_board\_test.py}) uses the largest shifts, $k_m=k_s=15$, and constant inputs at the ends of the range, so that $I$ reaches both limits and $V$ reaches its lower limit on the board.
-No run reached the upper limit of $v_2$.
+The saturation test (\texttt{host/saturation\_board\_test.py}) uses sets S1 and S2, with the largest shifts $k_m=k_s=15$, and constant inputs at the ends of the range, so that $I$ reaches both limits and $V$ its lower limit. Sets S3 and S4 use negative thresholds, which the lower limit of $V$ can affect.
+No run reached the upper limit of $v_2$. The argument above needs only $\theta \le 32{,}767$, which holds for every 16-bit threshold, positive or negative. The lower limit of $V$ changes a spike decision only when $\theta = -32{,}768$, because only then does a value clamped to $-32{,}768$ satisfy $V \ge \theta$ where the unclamped value would not. Set S3 tests this case on the board: all 500 samples matched, with a spike at every step for negative input. Set S4 covers a negative threshold with ordinary shifts.
 
 \begin{table}[t]
 \centering
@@ -237,6 +290,7 @@ Single neuron, set C (Table~\ref{tab:m2}) & $I$ upper, $V$ lower & 14 of 20 & 20
 Sweep, grid (Table~\ref{tab:sweep}) & $V$ lower & 1,400 of 2,048 sets & 1,843,200 & 0 \\
 Sweep, random (Table~\ref{tab:sweep}) & $V$ lower & 130 of 200 sets & 180,000 & 0 \\
 Saturation test, sets S1 and S2 & $I$ upper and lower, $V$ lower & 10 of 10 runs & 1,000 & 0 \\
+Saturation test, sets S3 and S4 & $I$ upper and lower, $V$ lower & 9 of 10 runs & 1,000 & 0 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -254,10 +308,10 @@ Each neuron has a constant external input drawn from $[0, e_{\max}]$ (Q8.8 raw) 
 Table~\ref{tab:ei} gives the mean firing rate in spikes per step and per neuron, over 10 random networks. The spread is the minimum and maximum over the networks.
 The rate falls as $f_{\mathrm{inh}}$ rises, and the share of silent neurons rises.
 The full sweep covers 24 combinations of $w_{\max}$, $w_{\mathrm{inh}}$ and $e_{\max}$, each with seven values of $f_{\mathrm{inh}}$ and 10 networks (1,680 runs).
-In all 24 combinations the mean rate falls monotonically with $f_{\mathrm{inh}}$, and it does so in every individual network.
+In all 24 combinations the mean rate falls monotonically with $f_{\mathrm{inh}}$, and it does so in every individual network: none of the 1,440 consecutive pairs of inhibition levels, over the 240 networks, increases.
 The five board conditions use the same generator and the first seed (20261104), so each board condition is one of the networks of this sweep.
 We had to lower $w_{\max}$ from 60 to 10: with 60, the network was either silent or at the refractory limit of 1/3 spikes per step, and the external input no longer mattered.
-At $f_{\mathrm{inh}}=0$, on average 78\% of neurons fire above 0.3 spikes per step, close to the refractory limit of 1/3 (65\% to 84\% across the networks). The decrease at the low-inhibition end is therefore partly a ceiling effect. The useful range of the perturbation is about 0.2 to 0.6.
+At $f_{\mathrm{inh}}=0$, on average 78\% of neurons fire above 0.3 spikes per step, close to the refractory limit of 1/3 (65\% to 84\% across the networks). The decrease at the low-inhibition end is therefore partly a ceiling effect. In the networks of Table~\ref{tab:ei}, the share of neurons above 0.3 spikes per step falls from 78\% at $f_{\mathrm{inh}}=0$ to 30\% at $f_{\mathrm{inh}}=0.2$ and 12\% at $0.3$. The range from 0.3 to 0.6 is therefore the least affected by the ceiling.
 
 \begin{table}[t]
 \centering
@@ -282,7 +336,7 @@ $f_{\mathrm{inh}}$ & Mean rate (min--max) & Silent neurons \\
 The USB--UART link on the board lost bytes in long unpaced bursts: a single write of 96 or 128 bytes returned only 66 bytes in a loopback test, while 16-byte chunks paced to the line rate all came back.
 We did not isolate the cause; it may lie in the bridge chip or in the host driver.
 The host therefore sends in 16-byte chunks at line speed, and waits for the full reply of a frame before it sends the next one.
-A run takes no reply, so the host waits for a time computed from the number of steps. This is a heuristic bound that we did not verify against the board's actual run time (Section~\ref{sec:limits}).
+A run takes no reply, so the host waits for a time computed from the number of steps. This is a heuristic bound that we did not verify against the board's actual run time (Section~\ref{sec:limits}). Across the board runs of this paper, the host sent about 87,000 request frames in 16-byte chunks: 80,928 in the 2,248 sweep sets (36 per set), 682 in the command flow, 3,725 in the five E/I conditions, and about 2,100 in the single-neuron and saturation runs. Every expected reply arrived, and no run recorded a failed read. This is not a measured error rate under unpaced load, and we did not measure worst-case latency.
 
 \section{Resources and scaling}
 \label{sec:resources}
@@ -313,12 +367,12 @@ Maximum clock, after routing & 38.75~MHz & 27~MHz target, met \\
 \begin{itemize}
 \item \textbf{Biology.} The hardware is validated against the model only. The E/I demonstration uses synthetic random networks, weights that are not calibrated against data, and rates per time step, not in Hz. We draw no conclusion about neural tissue.
 \item \textbf{Saturation.} The three clamps that can change the output were reached on the board, and every saturated step matched the model (Section~\ref{sec:sat}). The upper clamp of the potential was not reached in any traced run, and it cannot change the output. Clamps inside the network were not counted, and the network's potential was compared only at the last step.
-\item \textbf{Stimulus.} On the board, the input is a constant per neuron, and the sweep uses three constant inputs for 300 steps. Time-varying input was not tested on the board.
-\item \textbf{Membrane potential in the network.} The board compares spikes for the first 512 steps, and $V$ only at the last step. An intermediate $V$ would need a run of that length from rest for each step. A run of more than 512 steps keeps only the counts and the last snapshot after step 512.
+\item \textbf{Stimulus.} On the board, the input is a constant per neuron, and the sweep uses three constant inputs for 300 steps. Time-varying input was not tested on the board, and the protocol cannot send it: \texttt{RUN} and \texttt{SET\_INPUT} carry one constant value. All 2,083,200 single-neuron samples therefore use constant inputs, and their agreement says nothing about time-varying input.
+\item \textbf{Membrane potential in the network.} The board compares spikes for the first 512 steps, and $V$ only at the last step. An intermediate $V$ would need a run of that length from rest for each step. A run of more than 512 steps keeps only the counts and the last snapshot after step 512. In the 600-step E/I runs, steps 513 to 600 (88 of 600 steps, 15\%) have no spike-timing comparison; only their spike counts and the final snapshot are checked. Closing this gap would need a state read at step 512 or a longer trace memory.
 \item \textbf{Reference model.} The Python model is the only reference. It was written with AI assistance (Section~\ref{sec:verify}), and a misreading of the specification would be shared by the model and the hardware, so the board comparison cannot detect it. The unit tests in \texttt{model/test\_fixed.py} check the arithmetic and the update rules on selected cases; they are not an independent implementation. Floating-point simulators are not bit-exact and cannot serve as that reference.
-\item \textbf{Mutation analysis.} About 15 hand-written mutants were run, and no full kill matrix was produced. The cocotb test of the single neuron exercises one mutant, the logical shift.
+\item \textbf{Mutation analysis.} Eighteen hand-written mutants were run (Table~\ref{tab:mut}), each against one checker and all in simulation. No full kill matrix was produced. The mutated copies are not kept as files in the repository, so the table is a record of the checks, not reproducible code.
 \item \textbf{No netlist simulation.} The block-RAM models of the installed toolchain are empty. The synthesis tool prints range warnings for some memory mappings. The board result is our evidence that these do not matter, but it is a test of the cases we ran, not a proof.
-\item \textbf{Parameter space.} All neurons share one parameter set, there is no noise source, and the grid sweep fixes $\theta$, $V_{\mathrm{reset}}$ and $V_{\mathrm{rest}}$ (the random sweep covers them).
+\item \textbf{Parameter space.} All neurons share one parameter set, there is no noise source, and the grid sweep fixes $\theta$, $V_{\mathrm{reset}}$ and $V_{\mathrm{rest}}$ (the random sweep covers them). The thresholds tested on the board are 64 to 1,024 raw in the random sweep, 128, 256 and 512 in the other sets, and $-32{,}768$ and $-128$ in S3 and S4. Other negative thresholds were not tested.
 \item \textbf{Protocol.} The additive checksum does not detect swapped bytes. The decoder has no time-out, so a corrupted length field can misalign the frame stream. Adding one would need an RTL change, new simulation tests and a new board run, and we have not made that change. Some builds accept \texttt{READ\_RECORD} and \texttt{READ\_TRACE} without sending a reply and count them as successful, so the host must not send them. The board has no reset command, so its counters persist until the bitstream is reloaded, and the command-flow test must start from a freshly loaded board.
 \item \textbf{Timing.} The wait after a run is computed from the number of steps as a worst-case heuristic. We did not verify it against the time the board actually needs.
 \item \textbf{Design choices.} The protocol, the weight scale $w_{\mathrm{shift}}$ and the choice of the E/I test network are our own choices. They were not tuned or compared with alternatives.

@@ -144,7 +144,9 @@ def main():
     print("== saturation test (host/saturation_board_test.py), constant inputs, 100 steps")
     sat_inputs = [-128.0, -15.625, -3.90625, 15.625, 127.99609375]
     for name, kw in (("S1", dict(theta=512, v_reset=0, v_rest=0, k_m=15, k_s=15, refrac=0)),
-                     ("S2", dict(theta=512, v_reset=-128, v_rest=0, k_m=15, k_s=15, refrac=7))):
+                     ("S2", dict(theta=512, v_reset=-128, v_rest=0, k_m=15, k_s=15, refrac=7)),
+                     ("S3", dict(theta=-32768, v_reset=0, v_rest=0, k_m=15, k_s=15, refrac=0)),
+                     ("S4", dict(theta=-128, v_reset=-256, v_rest=0, k_m=4, k_s=3, refrac=2))):
         p = fixed.Params(**kw)
         for x in sat_inputs:
             hits = count_clamps(p, fixed.to_q(x), 100)
