@@ -249,3 +249,7 @@ This project is developed with Claude Code. Design decisions, the verification m
 ## License
 
 Released under the MIT License. See [LICENSE](LICENSE).
+
+## Citation
+
+The code is archived on Zenodo: <https://doi.org/10.5281/zenodo.24011633>. Citation metadata is in [CITATION.cff](CITATION.cff).

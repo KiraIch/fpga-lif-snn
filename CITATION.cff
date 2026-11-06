@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "neuro-fpga: a bit-level verified fixed-point LIF neuron and 256-neuron spiking network on a Tang Nano 20K"
+authors:
+  - family-names: Lin
+    given-names: ChiaAn
+    affiliation: "Master Program for Health and Intelligent Medicine"
+doi: 10.5281/zenodo.24011633
+license: MIT
+repository-code: "https://github.com/KiraIch/fpga-lif-snn"
+keywords:
+  - spiking neural network
+  - leaky integrate-and-fire
+  - fixed-point arithmetic
+  - FPGA
+  - Tang Nano 20K
+  - Gowin GW2AR-18
+abstract: >-
+  Verilog RTL, Python reference model, and host scripts for a leaky
+  integrate-and-fire neuron and a 256-neuron time-multiplexed network on a
+  Tang Nano 20K (Gowin GW2AR-18). The hardware is checked against a fixed-point
+  Python model, in simulation and on the board.
