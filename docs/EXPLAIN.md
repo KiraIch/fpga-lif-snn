@@ -725,6 +725,16 @@ python3 host/saturation_board_test.py /dev/ttyUSB1
 
 燒錄與測試的 log 存於 `results/flash_neuron_top_2026-11-06.log` 與 `results/saturation_board_test_2026-11-06.log`。
 
+### 4.22 第二輪審查的補強：`host/protocol_robustness_board_test.py`、`host/negative_control.py`、`host/sum_magnitude.py`（2026-11-06）
+
+**白話說明。** 第二輪審查指出四件事：板上沒有錯誤輸入的測試、比對程式本身沒有被驗證能不能抓錯、網路累加器的位寬只有理論論證、論文沒有列出網路與飽和測試的實際參數。這一節對應的三個腳本各處理一件事。
+
+- **錯誤輸入的板上測試**（`host/protocol_robustness_board_test.py`，`results/protocol_robustness_board_test_2026-11-06.log`）：送四種錯誤，並記錄回覆與錯誤計數的變化。（1）checksum 錯誤：無回覆，錯誤計數 +1。（2）未知命令 0x0A：無回覆，+1。（3）忙碌：送出 `READ_RECORD` 後，在回覆還在傳送時送 `READ_STATUS`，只收到 `READ_RECORD` 的回覆，錯誤計數 +1，證明忙碌時的拒絕規則在板上被實際觸發。（4）截斷的封包 `A5 06 00` 接著一個合法的 `READ_STATUS`：decoder 沒有 time-out，會把合法封包的第一個 byte 當成截斷封包的 checksum，合法封包因此遺失，錯誤計數 +1；之後的合法封包正常回覆。四項都與預測一致。
+- **比對程式的負向對照**（`host/negative_control.py`，`results/negative_control_2026-11-06.log`）：拿板上真的回傳的 20 條軌跡，用和板上檢查相同的比較式（`a != b`，逐步比 V 與 spike）。未修改時差異為 0。然後故意注入四種錯誤：翻一個 V 的 bit、移除一個 spike、軌跡平移一步、整條軌跡換成另一個輸入的軌跡。四種都被偵測到。這是比對程式對真實資料的敏感度測試，不是板級突變測試。
+- **累加器實際用到的範圍**（`host/sum_magnitude.py`，`results/sum_magnitude.log`）：用模型重建板上使用的網路（同樣的產生器與種子），記錄每一步每顆神經元的未飽和突觸和。命令流的最大值是 1,084，E/I 五個條件的最大值是 378，都遠小於 2^15。也就是說，累加器第 10 位以上在板上只承載符號位元。24 位元寬度是上界的論證，不是板上實測的結果。
+
+**還沒做。** 第 512 步之後的完整狀態讀回、I 的讀回、板級突變測試、非定速 UART 的壓力測試，都需要改 RTL 或新的上板實驗，本輪沒有做。
+
 ## 5. 名詞對照
 
 | 名詞 | 白話解釋 |

@@ -1,0 +1,7 @@
+﻿board traces loaded: 20 runs, 2000 steps
+unmodified: differences 0  (PASS)
+injected: one V bit flipped at step 50: differences 1  (detected)
+injected: spike at step 0 removed: differences 1  (detected)
+injected: model trace shifted by one step: differences 26  (detected)
+injected: whole trace replaced by another input's model trace: differences 100  (detected)
+NEGATIVE CONTROL: PASS

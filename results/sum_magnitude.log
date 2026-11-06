@@ -1,0 +1,6 @@
+﻿command flow (N=256, T=200, SEED=20261103): largest |exact sum| = 1084, samples outside 16 bits = 0 of 51200
+E/I f_inh=0.2 w_inh=1.0 w_max=10 e_max=30: largest |exact sum| = 252, samples outside 16 bits = 0 of 153600
+E/I f_inh=0.5 w_inh=1.0 w_max=10 e_max=30: largest |exact sum| = 160, samples outside 16 bits = 0 of 153600
+E/I f_inh=0.5 w_inh=0.5 w_max=10 e_max=30: largest |exact sum| = 169, samples outside 16 bits = 0 of 153600
+E/I f_inh=0.5 w_inh=2.0 w_max=10 e_max=30: largest |exact sum| = 264, samples outside 16 bits = 0 of 153600
+E/I f_inh=0.3 w_inh=1.5 w_max=20 e_max=10: largest |exact sum| = 378, samples outside 16 bits = 0 of 153600

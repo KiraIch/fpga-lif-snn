@@ -684,3 +684,36 @@
 - 審查員 B 的回覆（繁體中文）已在對話中提供，尚未貼給審查員。
 - commit 與 push（尚未執行）。
 - Zenodo DOI 只涵蓋建立 release 時的版本，本次修正需要新的 release 才會被收錄。
+
+## 2026-11-06（審查員 B 第二輪：範圍、負向對照、板上錯誤輸入）
+
+**完成**
+
+- 板上錯誤輸入測試（`host/protocol_robustness_board_test.py`，neuron_top 板）：壞 checksum、未知命令、忙碌時送命令（在 READ_RECORD 回覆傳送中）、截斷封包後接合法封包。四項都與預測一致，之後的合法封包正常回覆。log：`results/protocol_robustness_board_test_2026-11-06.log`。
+- 比對程式的負向對照（`host/negative_control.py`，離線，用板上回傳的 20 條軌跡）：未修改為 0 差異；翻 V 的 bit、移除 spike、平移一步、換整條軌跡，四種都被偵測。log：`results/negative_control_2026-11-06.log`。
+- 累加器實測（`host/sum_magnitude.py`）：命令流最大未飽和突觸和 1,084，E/I 五條件最大 378，都遠小於 2^15。log：`results/sum_magnitude.log`。
+- 論文（`docs/paper/main.tex`，PDF 重編為 20 頁，0 錯誤）：
+  - 「state」改為 V 與 spike，I 與不應期計數器未讀回的說明寫入摘要、貢獻、結論與限制。
+  - 完整狀態位元數修正為 V、spike、I、不應期合計 36 位元，即 9,216 Kbit。
+  - 「前兩個不會飽和」改為 i1 與 v1 不會飽和。
+  - 2.1 說明 V_reset 與 V_rest 的角色。
+  - 新增網路設定表（Table 7）、飽和測試向量表（Table 6）、板上錯誤輸入表（Table 8）、24 組 E/I 參數表（Table 10）。
+  - 累加器章節補上實測最大值與「位寬是上界，不是板上實測」的說明。
+  - 限制：合成的 range 警告、READ_RECORD 與 READ_TRACE 的回覆行為依 build 而異。
+- 文件：`docs/EXPLAIN.md` 4.22、`docs/DECISIONS.md` D-015（草稿）、`results/README.md`。
+
+**觀察**
+
+- 24 組 E/I 參數在 f = 0 時，天花板份額至少 57%，多數在 78% 以上（w_max = 20 時 95% 以上）。低抑制端的單調性因此主要來自天花板。
+- 「unpaired」一詞在論文中不存在，論文原本就寫 unpaced。
+- 網路 build 的 READ_RECORD 沒有回覆（只計為 ok）；單神經元 build 的 READ_TRACE 沒有回覆。第一輪審查員看到的矛盾不存在，因為主機只對有回覆的 build 送對應命令。
+
+**還沒做**
+
+- 讀回 I 與不應期計數器（需要改 RTL 與板上流程）。
+- 第 512 步之後的完整狀態讀回。
+- 板級突變測試（需要燒錄突變後的 bitstream）。
+- 非定速 UART 的壓力測試。
+- 突變檔案無法從歷史中恢復，論文已寫明。
+- 審查員 B 的回覆（繁體中文）在對話中提供，尚未貼給審查員。
+- commit 與 push（尚未執行）。
