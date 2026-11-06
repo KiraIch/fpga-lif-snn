@@ -152,6 +152,9 @@ The E/I conditions are compared in the same way: spike counts, last-step snapsho
 The block-RAM simulation models that come with the installed toolchain are empty, so a netlist simulation cannot run.
 We therefore use the board comparison as the functional evidence for the synthesised design. It covers the cases we ran, not all cases.
 
+\subsection{AI-assisted development}
+This work was developed with Claude Code, an AI coding assistant. The assistant wrote and edited code, tests and text under the direction of the author. The author chose the design, the verification method and the claims, and checked the results. The author is responsible for every claim in this paper.
+
 \section{Results}
 \label{sec:results}
 \subsection{Single neuron on the board}
@@ -212,7 +215,7 @@ Random & 200 & 180,000 & 0 & 0 & 195 \\
 \end{table}
 
 \subsection{Network on the board}
-The 682-frame flow at $N=256$ gave 1,892 reply bytes, all identical to the model, in 45.7~s.
+The 682-frame flow at $N=256$ gave 1,892 reply bytes, all identical to the model, in 44.4~s (run of 2026-11-06, with the current \texttt{board\_network\_test.py}; log in \texttt{results/}).
 Five E/I conditions then ran on the board, each with 745 frames: $(f_{\mathrm{inh}}, w_{\mathrm{inh}}, w_{\max}, e_{\max}) = (0.2, 1, 10, 30)$, $(0.5, 1, 10, 30)$, $(0.5, 0.5, 10, 30)$, $(0.5, 2, 10, 30)$ and $(0.3, 1.5, 20, 10)$.
 For each, the spike counts, the last-step snapshot and the spikes of the first 512 steps matched the full model.
 The board's counters showed no saturation event in these runs: the largest input magnitude was 1,084 raw in the command flow and between 252 and 622 raw in the E/I runs, far below the limit of 32,767.
@@ -313,9 +316,6 @@ The raw results (sweep CSVs, board logs and place-and-route logs) are in the \te
 \textbf{Funding.} This work received no funding.\\
 \textbf{Author contributions.} The work was carried out independently by the author, ChiaAn Lin.\\
 \textbf{Ethics.} Not applicable: no human or animal data were used.
-
-\section*{AI-assisted development}
-This work was developed with Claude Code, an AI coding assistant. The assistant wrote and edited code, tests and text under the direction of the author. The author chose the design, the verification method and the claims, and checked the results. The author is responsible for every claim in this paper.
 
 \bibliographystyle{unsrtnat}
 \bibliography{references}

@@ -1,0 +1,2 @@
+N=256: 682 frames, 70168 bytes in, 1892 bytes expected back
+PASS: 682 frames, 1892 reply bytes match the model (44.4 s)

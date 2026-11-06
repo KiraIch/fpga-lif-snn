@@ -126,7 +126,7 @@ Resource use of the full design at N = 256 (nextpnr, GW2AR-18):
 |---|---|---|
 | Network core vs model (simulation) | N = 16, 64, 256 | 3,200, 12,800 and 51,200 records, all identical |
 | Full design, byte level (simulation) | N = 16, 64, 256 | All replies identical. N = 256: 682 frames, 70,168 bytes in, 1,892 bytes out |
-| Full design on the board | N = 256 | 682 frames, 1,892 reply bytes, all identical, PASS in 45.7 s (trace bitstream, fresh board) |
+| Full design on the board | N = 256 | 682 frames, 1,892 reply bytes, all identical, PASS in 44.4 s (trace bitstream, fresh board, re-run 2026-11-06, log in `results/`) |
 | Spike trace, simulation | N = 16 (T = 200 and 600), 64, 256 | All replies identical. Four mutants fail as they should |
 | Busy refusal, simulation (`sim/tb_decoder_busy.v`) | every command while busy | PASS: 9 commands refused (no request, no state change), then accepted when idle |
 | E/I conditions on the board, with trace | 5 conditions, N = 256 | 745 frames each, counts, snapshot and first 512 steps of spikes all identical, PASS |

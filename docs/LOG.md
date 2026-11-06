@@ -614,3 +614,25 @@
 - 板上重跑 `host/board_network_test.py`（新的等待時間腳本）。
 - 作者確認：`docs/DECISIONS.md` 與 `EXPLAIN.md` 的草稿改寫。
 - 作者確認：Research Square 的格式與帳號提交。
+
+## 2026-11-06（投稿前必做項目）
+
+**完成**
+
+- 板上重跑：燒錄 `network_top`（SRAM），再用新版 `host/board_network_test.py` 跑 N = 256 命令流程。結果 PASS：682 個封包，1,892 bytes 回覆全部與模型一致，耗時 44.4 秒（先前的 45.7 秒是舊執行）。log 存於 `results/board_network_test_2026-11-06.log`，燒錄 log 存於 `results/flash_network_top_2026-11-06.log`。
+- AI 揭露：依 Research Square 的規定（LLM 使用要記錄在 Methods），把段落從論文最後移到 Verification 之後，改為 `AI-assisted development` 小節。
+- 草稿標記：作者已審閱 DECISIONS.md 與 EXPLAIN.md，把狀態行與標題的「草稿」改為「已審閱（2026-11-06）」。決定內容沒有改動。
+- 論文 PDF 重新產生：14 頁，0 錯誤、0 未定義引用、5 筆參考文獻。複製到 `docs/paper/main.pdf`。
+- 論文中的板上流程時間改為 44.4 秒（2026-11-06 的執行）。README 與 EXPLAIN 4.19 同步更新。
+
+**觀察**
+
+- 板上 E/I 五個條件是 2026-11-06 之前用新版腳本跑的，PASS（745 個封包）。它們的 log 只印在終端機，沒有存檔。
+- Research Square 授權為 CC BY 4.0（來源：Research Square editorial policy）。
+
+**還沒做**
+
+- 選擇程式碼授權（LICENSE）。Zenodo 發 DOI 前要先決定。
+- 把 Zenodo DOI 加入論文 Availability 與 README（需要先做 release）。
+- 作者在瀏覽器檢查 PDF 版面。
+- Research Square 帳號與投稿（作者操作）。
