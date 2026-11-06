@@ -10,3 +10,4 @@ docs/papers/pdfs/
 sim/sim_build*/
 sim/results*.xml
 *.vvp
+!results/*.log
