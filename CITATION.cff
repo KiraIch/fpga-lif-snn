@@ -6,7 +6,7 @@ authors:
   - family-names: Lin
     given-names: ChiaAn
     affiliation: "Master Program for Health and Intelligent Medicine"
-doi: 10.5281/zenodo.24011633
+doi: 10.5281/zenodo.24013358
 license: MIT
 repository-code: "https://github.com/KiraIch/fpga-lif-snn"
 keywords:
