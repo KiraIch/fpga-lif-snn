@@ -5,7 +5,7 @@ title: "neuro-fpga: a bit-level verified fixed-point LIF neuron and 256-neuron s
 authors:
   - family-names: Lin
     given-names: ChiaAn
-    affiliation: "Master Program for Health and Intelligent Medicine"
+    affiliation: "Master Program for Health and Intelligent Medicine, National Taiwan University"
 doi: 10.5281/zenodo.24013358
 license: MIT
 repository-code: "https://github.com/KiraIch/fpga-lif-snn"
