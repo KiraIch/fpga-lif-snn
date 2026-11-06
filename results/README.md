@@ -14,6 +14,7 @@ Files behind the numbers in the paper (`docs/paper/main.tex`). Each file is prod
 | `flash_neuron_top_2026-11-06.log` | `make flash TOP=neuron_top` in `fpga/` (SRAM) | Saturation board test (bitstream used) |
 | `saturation_board_test_2026-11-06.log` | `python3 host/saturation_board_test.py /dev/ttyUSB1`, board run | Saturation subsection (sets S1 to S4: 2,000 samples, 0 mismatches) |
 | `protocol_robustness_board_test_2026-11-06.log` | `python3 host/protocol_robustness_board_test.py /dev/ttyUSB1`, board run (neuron_top) | Table 8 (malformed frames on the board) |
+| `ei_board_*_2026-11-06.log` (five files, one per condition) | `python3 host/ei_board_test.py /dev/ttyUSB1 --f-inh ... --w-inh ... --w-max ... --e-max ...`, board run (network_top) | Section 5.4 (five E/I conditions on the board) |
 | `negative_control_2026-11-06.log` | `python host/negative_control.py`, offline on `build/saturation_board_test.json` | Verification, negative control of the checker |
 | `sum_magnitude.log` | `python host/sum_magnitude.py` (model; networks rebuilt with the board generators and seeds) | Network section: largest exact synaptic sum on the board (1,084 and 378 raw) |
 

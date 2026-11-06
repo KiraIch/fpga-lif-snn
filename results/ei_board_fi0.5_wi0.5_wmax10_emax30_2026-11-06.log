@@ -1,0 +1,7 @@
+model: f_inh=0.5 w_inh=0.5 w_max=10 e_max=30 steps=600 seed=20261104
+model: mean rate over all 600 steps 0.184
+model: mean rate after warm-up (steps 100..599) 0.187
+model: silent 0.07
+board starting counters: ok=211 err=0
+trace: steps 0..511 in 74 frames
+PASS: 745 frames sent, counts, snapshot and trace match the model

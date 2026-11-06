@@ -10,8 +10,8 @@ Cases:
      is still sending a READ_RECORD reply   -> refused, err + 1, only the READ_RECORD reply arrives
   4. truncated frame [A5 06 00], then a valid READ_STATUS
                                              -> the decoder has no time-out; the valid frame is
-                                                taken as the rest of the bad one: no reply, err + 1,
-                                                and the next valid frame is answered again
+                                                taken as the rest of the bad one: no reply, err + 1
+  5. recovery: a further valid READ_STATUS   -> answered, and err is unchanged from case 4
 
 The expected values are written out before the run. The script exits with 1 if any case differs.
 
@@ -28,10 +28,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 import run_trial as rt  # noqa: E402
-from protocol import FrameParser, pack_read_record  # noqa: E402
+from protocol import FrameParser, pack_read_record, pack_run  # noqa: E402
 from uart_loopback import open_port  # noqa: E402
 
 CMD_READ_STATUS = 0x06
+CMD_RUN = 0x04
 CMD_READ_RECORD = 0x05
 CMD_REPLY = 0x80
 DRAIN_S = 0.4
@@ -68,11 +69,13 @@ def main():
     parser = FrameParser()
     print(f"Port {path} open at 115200 8N1")
     results = []
+    last_err = [None]   # error counter after the most recent case
 
     def case(name, expect_replies, expect_err_delta, action):
         e0 = err_of(fd)
         frames = action()
         e1 = err_of(fd)
+        last_err[0] = e1
         got = [c for c, _ in frames if c & CMD_REPLY]
         ok = (sorted(got) == sorted(expect_replies)) and (e1 - e0 == expect_err_delta)
         results.append(ok)
@@ -99,17 +102,27 @@ def main():
         os.write(fd, frame(CMD_READ_STATUS))
         return drain(fd, parser)
 
+    # READ_RECORD is valid only inside the last run (rtl/cmd_decoder.v), so case 3 needs a
+    # run of at least 32 steps first. Without it the READ_RECORD is refused, with no reply.
+    os.write(fd, frame(CMD_RUN, pack_run(0, 64)))
+    drain(fd, parser, 0.1)
+
     case("1 bad checksum", [], 1, bad_checksum)
     case("2 unknown command", [], 1, unknown_command)
     case("3 busy during reply", [CMD_READ_RECORD | CMD_REPLY], 1, busy_during_reply)
     case("4 truncated frame", [], 1, truncated_then_valid)
 
-    # the decoder must recover: a fresh valid frame is answered
+    # the decoder must recover: a fresh valid frame is answered, and the error counter
+    # is the same as after case 4 (the valid frame itself must not count as an error)
     frames = drain(fd, parser, 0.1)
     st = rt.read_status(fd)
-    recovered = st is not None
+    answered = st is not None
+    err_same = answered and st["err"] == last_err[0]
+    recovered = answered and err_same
     results.append(recovered)
-    print(f"5 recovery after case 4: READ_STATUS {'answered' if recovered else 'NOT answered'}")
+    print(f"5 recovery after case 4: READ_STATUS {'answered' if answered else 'NOT answered'}, "
+          f"err {last_err[0]} -> {st['err'] if answered else None} "
+          f"(expected unchanged)  {'PASS' if recovered else 'FAIL'}")
 
     os.close(fd)
     all_ok = all(results)

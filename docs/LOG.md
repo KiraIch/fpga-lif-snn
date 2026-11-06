@@ -775,3 +775,22 @@
 - busy 案例在 network build 上的板上測試：需要燒錄 network build 後重跑。
 - E/I 板上執行的日誌不在 `results/`（只有模型的 CSV）；要保存需要在板上重跑 `host/ei_board_test.py`。
 - 「745 幀 vs 512 步」的 CI 斷言（審查員建議）：尚未加入。
+
+## 2026-11-06 板上重跑：protocol 第 5 案的計數器、E/I 五個條件的日誌
+
+**完成**
+
+- `host/protocol_robustness_board_test.py`：(1) 第 5 案改為比對 error counter，必須與第 4 案後相同；(2) 測試開始前先 RUN 64 步。原因：READ_RECORD 只在最後一次 RUN 的範圍內有效（`rtl/cmd_decoder.v`）。重新燒錄 neuron_top 後直接跑，第 3 案的 READ_RECORD 被拒絕、沒有回覆，代表前一版的第 3 案依賴板子上殘留的 RUN 狀態。
+- 板上重跑（neuron_top）：五案全部 PASS，日誌 `results/protocol_robustness_board_test_2026-11-06.log`。第 3 案回覆 0x85，第 5 案 err 10 → 10。
+- 板上重跑 E/I 五個條件（network_top，N = 256，600 步，seed 20261104）：全部 PASS，每次 745 幀，計數、快照與前 512 步 spike 與模型一致。日誌 `results/ei_board_*_2026-11-06.log`。
+- 論文：Table 8 第 5 案改為「unchanged」；5.5 改為五案都比對計數器，並註明 64 步前置 RUN；5.4 連結 E/I 日誌。Overfull 警告為 0。
+
+**觀察**
+
+- 前一版 protocol 日誌的第 3 案能通過，是因為那時板上已有 RUN 紀錄；重新燒錄後沒有，所以測試需要前置 RUN。
+- 目前工作區有大量非本次修改的檔案（fpga/Makefile、sim/*.mem 等）的行尾差異，沒有納入這次 commit。
+
+**還沒做**
+
+- busy 案例在 network build 上的板上測試：network build 的 READ_RECORD 不回覆，所以要改用會回覆的命令（例如 READ_SNAPSHOT）來製造 busy。需要燒錄 network build 後另寫測試，尚未做。
+- 「745 幀 vs 512 步」的 CI 斷言：尚未加入。
