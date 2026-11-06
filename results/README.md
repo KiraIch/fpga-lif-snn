@@ -8,6 +8,7 @@ Files behind the numbers in the paper (`docs/paper/main.tex`). Each file is prod
 | `sweep_random.csv` | `host/sweep.py` (random, seed 20261103), board run | Table 4 (random row) |
 | `m2_trial_A.json`, `m2_trial_B.json`, `m2_trial_C.json` | `host/run_trial.py`, board run | Table 3, Figures 1 and 2 |
 | `ei_full_sweep.csv` | `host/ei_full_sweep.py` (model, 10 networks per combination) | Table 9 (E/I), monotonicity; Table 10 (all 24 combinations) |
+| `ei_tables.tex` | `python host/make_ei_tables.py` (reads `ei_full_sweep.csv`, cross-checks Table 9 against Table 10) | Table 9 and Table 10 bodies (generated) |
 | `make_network_top_2026-11-04.log` | `make -B TOP=network_top` in `fpga/` (Yosys, nextpnr-himbaechel, gowin_pack) | Table 11 (resources, maximum clock after routing) |
 | `clamp_census.log` | `python host/clamp_census.py` (model only, traced copy of `fixed.step`) | Table 5 (clamp counts, saturation subsection) |
 | `flash_neuron_top_2026-11-06.log` | `make flash TOP=neuron_top` in `fpga/` (SRAM) | Saturation board test (bitstream used) |

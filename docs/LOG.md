@@ -717,3 +717,35 @@
 - 突變檔案無法從歷史中恢復，論文已寫明。
 - 審查員 B 的回覆（繁體中文）在對話中提供，尚未貼給審查員。
 - commit 與 push（尚未執行）。
+
+## 2026-11-06 審查員 B 第三輪回覆（論文與 E/I 表格）
+
+**完成**
+
+- Table 9、Table 10 改由 `host/make_ei_tables.py` 從 `results/ei_full_sweep.csv` 產生，並檢查 Table 9 的數值等於 Table 10 中同一組合的列（通過）。產生的列寫入 `results/ei_tables.tex`，`--update-paper` 會覆寫論文中兩個表格的內容（可重複執行，結果相同）。
+- Table 9 新增「高於 0.3 spikes/step 的比例」欄；Table 10 新增 f_inh = 0.3 的天花板比例欄，並把欄名縮寫以符合版面。
+- Table 3 的參數順序改為 θ、V_reset、V_rest，與模型與 Table 6 一致（原本 V_rest 與 V_reset 順序不一致，確實有問題）。
+- Figure 2 說明改寫：死區是洩漏項的殘留偏移（低於 V_rest 不到 2^{k_m} raw 單位時洩漏項為零）。
+- Table 5 註記 S3、S4 列中唯一沒有到達飽和限制的執行（S4、外部輸入 +4000 raw），它仍與模型一致。
+- Table 7：來源以索引分配（E/I 是最後 f_inh·N 個來源），並說明 command flow 與隨機掃描都用 seed 20261103（兩個獨立產生器）。
+- Table 8 新增第 5 列（案例 4 之後的 READ_STATUS，已回覆、不計數）。
+- Section 3.3 與 5.4 統一為同一個量：精確突觸和（飽和前）的最大值，command flow 1,084 raw，E/I 160 到 378 raw。
+- Section 5.6 補充：f_inh = 0.3 時天花板比例在各組合間從 0% 到 82%，只有小比例的組合在 0.3 到 0.6 之間不受天花板影響。
+- 論文版面：加入 `geometry`（A4，邊界 2.5 cm）。原本沒有指定版面，文字寬度只有約 345 pt，寬表格會超出版面。加入後 pdflatex 的 Overfull 警告從 13 項降到 0。論文由 20 頁變成 14 頁。
+- 修正 Table 1、Table 5、Table 8 的大括號（`{\small ...}` 群組）與 Table 5 的寬度（resizebox）。
+
+**觀察**
+
+- 審查員指出 Table 9/10 有矛盾：實際是列的排序被誤讀（w_inh = 0.5 那一列），數值一致。
+- 審查員引用的「unpassed/unpacked」與「Vrest Vrest」在論文原文中不存在。
+
+**還沒做（需要使用者決定或另外做）**
+
+- 論文標題是否改為審查員建議的寫法：待決定。
+- 讀回突觸電流 I 與不反應計數器（需要改 RTL 並重新上板）。
+- 板上 mutation 測試（需要有 mutant 的 bitstream）。
+- 非天花板區域的 E/I 掃描（需要新的模型掃描）。
+- UART 無節拍壓力測試，以及累加器高位元的上板測試。
+- Gowin 區塊記憶體 range 警告的網表分析。
+- 512 到 600 步之間的 spike 時序比對（需要讀回第 512 步的狀態，或更長的軌跡）。
+- Zenodo DOI 與 GitHub release：等審查員通過後才產生。

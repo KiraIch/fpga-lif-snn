@@ -106,6 +106,18 @@
 - **驗證：** `results/sum_magnitude.log`（上界與實測最大值）；`results/negative_control_2026-11-06.log`（比對程式的負向對照）。
 - **狀態：** 草稿（待作者審閱）。
 
+
+## D-016 E/I 表格由腳本從 CSV 產生，並交叉檢查（2026-11-06）
+
+- **決定**：Table 9 與 Table 10 的數字由 `host/make_ei_tables.py` 從 `results/ei_full_sweep.csv` 產生，不手抄。Table 9 的數值必須等於 Table 10 中同一組合的列，否則腳本失敗。
+- **理由**：審查員 B 第三輪懷疑兩個表格有矛盾。手抄容易出錯，腳本加上交叉檢查，讓表格與原始數據可以直接對照。
+- **影響**：修改 E/I 掃描結果後，重新執行 `python host/make_ei_tables.py --update-paper` 即可更新論文表格。
+
+## D-017 論文版面：A4、邊界 2.5 cm（2026-11-06）
+
+- **決定**：`docs/paper/main.tex` 明確指定 A4 與 2.5 cm 邊界（`geometry`）。寬表格以 `\resizebox` 縮放或加上 `\small` 群組。
+- **理由**：原本沒有指定版面，文字寬度只有約 345 pt，表格超出版面。加上 `geometry` 後 Overfull 警告為 0，頁數由 20 變為 14。
+- **影響**：PDF 重新產生；論文頁數與舊版不同。
 ## 待決定
 
 - [x] 權重縮放：`w_shift` 已在 D-009 定為全域常數
