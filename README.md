@@ -93,7 +93,7 @@ syn[i][t] = sat( Σ_j (W[j][i] << 2) · s[j][t−1]  +  ext[i] )
 ### Hardware
 
 - Each memory has one write port and one synchronous read port. The synthesis tool maps such memories to block RAM. The same memories written as arrays become flip-flops, which at N = 256 needs about 45,000 cells, far more than the chip has.
-- Synaptic input is event-driven. When neuron `j` spikes, its weight row is added to an accumulator for the next step. Two accumulators alternate: one is read while the other is written.
+- Synaptic input is spike-driven. When neuron `j` spikes, its weight row is added to an accumulator for the next step. Two accumulators alternate: one is read while the other is written.
 - Each step has two pipelined phases. Phase A updates every neuron. Phase B adds the weight rows of the spiking sources. The read order keeps consecutive reads on different neurons, so the pipeline never reads a value that is still being written ([`docs/EXPLAIN.md`](docs/EXPLAIN.md) 4.17).
 
 ### Board design

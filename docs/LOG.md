@@ -636,3 +636,23 @@
 - 把 Zenodo DOI 加入論文 Availability 與 README（需要先做 release）。
 - 作者在瀏覽器檢查 PDF 版面。
 - Research Square 帳號與投稿（作者操作）。
+
+## 2026-11-06（審查報告修正：飽和覆蓋與論文敘述）
+
+**完成**
+
+- 追蹤版模型計數（`host/clamp_census.py`，輸出 `results/clamp_census.log`）：參數組 C 在板上的 20 個輸入中有 14 個碰到飽和（i2+、v2−），板上每一步與模型一致。網格掃描有 1,400 / 2,048 組、隨機掃描有 130 / 200 組碰到 v2−。先前論文寫「板上沒有碰到飽和」是錯的，已改寫。
+- 新增 `host/saturation_board_test.py`。燒錄 `neuron_top`（`make flash`，log 存於 `results/flash_neuron_top_2026-11-06.log`）後上板，結果 PASS：參數組 S1、S2 各 5 個輸入、各 100 步，共 1,000 個樣本、0 個不一致，碰到 i2+、i2−、v2−。log 存於 `results/saturation_board_test_2026-11-06.log`。
+- 論文（`docs/paper/main.tex`）：摘要、結果（新增 Saturation on the board 小節與 Table 3）、限制、結論改寫；Figure 2 caption 補單位；`event-driven` 改為 `spike-driven`；限制新增 Reference model 一項，並說明 UART 解碼器沒有 time-out 的原因。
+- 文件：`docs/EXPLAIN.md` 4.21、`docs/DECISIONS.md` D-014（狀態：草稿，待作者審閱）、`results/README.md`。
+
+**觀察**
+
+- 上限的 v2 不影響輸出（夾住後的值 ≥ θ，結果是發放或不反應期丟棄），論文以論證說明，沒有以板上測試覆蓋。i1 與 v1 由區間論證不會飽和；追蹤計數中也都是 0。
+- 網路內部的飽和沒有計數，網路膜電位只在最後一步比對。
+- 板子只回傳 V 與 spike，I 的飽和是透過 V 間接看到的。
+
+**還沒做**
+
+- 論文 PDF 重新產生、commit、push（尚未執行）。
+- Zenodo DOI 只涵蓋建立 release 時的版本。這次的 commit 要 push 後，另外建立新的 GitHub release 與新的 Zenodo 版本，才會被收錄。

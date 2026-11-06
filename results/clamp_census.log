@@ -1,0 +1,53 @@
+﻿Clamp census for model/fixed.py (raw Q8.8 values; + upper limit, - lower limit)
+
+== run_trial.py set C, 20 inputs (-0.1..0.375), 1000 steps
+   clamp events: i2+: 4701, v2-: 3705
+   inputs with at least one clamp: 14 of 20
+     x_raw    -26: v2-: 950
+     x_raw    -19: v2-: 941
+     x_raw    -13: v2-: 927
+     x_raw     -6: v2-: 887
+     x_raw    +38: i2+: 138
+     x_raw    +45: i2+: 272
+     x_raw    +51: i2+: 358
+     x_raw    +58: i2+: 436
+     x_raw    +64: i2+: 489
+     x_raw    +70: i2+: 532
+     x_raw    +77: i2+: 575
+     x_raw    +83: i2+: 606
+     x_raw    +90: i2+: 636
+     x_raw    +96: i2+: 659
+
+== run_trial.py set A, 20 inputs, 1000 steps
+   clamp events: none
+
+== run_trial.py set B, 20 inputs, 1000 steps
+   clamp events: none
+
+== sweep.py grid: 2048 sets, inputs (-0.2, 0.1, 0.4), 300 steps
+   clamp events: v2-: 336216
+   sets with at least one clamp: v2-: 1400
+
+== sweep.py random (seed 20261103): 200 sets, inputs (-0.2, 0.1, 0.4), 300 steps
+   clamp events: v2-: 31913
+   sets with at least one clamp: v2-: 130
+
+== saturation test (host/saturation_board_test.py), constant inputs, 100 steps
+   S1 x_raw -32768: i2-: 99, v2-: 99
+   S1 x_raw  -4000: i2-: 92, v2-: 97
+   S1 x_raw  -1000: i2-: 68, v2-: 93
+   S1 x_raw  +4000: i2+: 92
+   S1 x_raw +32767: i2+: 99
+   S2 x_raw -32768: i2-: 99, v2-: 99
+   S2 x_raw  -4000: i2-: 92, v2-: 97
+   S2 x_raw  -1000: i2-: 68, v2-: 93
+   S2 x_raw  +4000: i2+: 92
+   S2 x_raw +32767: i2+: 99
+
+== single-neuron search: which positions can be reached at all (100 steps)
+   x_raw -32768: i2-: 99, v2-: 99
+   x_raw  -4000: i2-: 92, v2-: 97
+   x_raw  -1000: i2-: 68, v2-: 93
+   x_raw  +1000: i2+: 68
+   x_raw  +4000: i2+: 92
+   x_raw +32767: i2+: 99

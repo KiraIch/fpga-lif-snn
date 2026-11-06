@@ -24,11 +24,11 @@ Spiking neuron models are small enough to run on inexpensive FPGAs, but a hardwa
 We present a leaky integrate-and-fire (LIF) neuron and a 256-neuron network on a low-cost FPGA (Tang Nano 20K, Gowin GW2AR-18), and we test both against a Python reference model.
 The model uses signed Q8.8 fixed-point state, saturating additions and shift-based time constants, so no multiplier is needed.
 On the board, the single neuron matched the model at every step of 60,000 samples from three hand-picked parameter sets and of 2,023,200 samples from a sweep of 2,248 parameter sets.
-A time-multiplexed network with event-driven synapses, controlled over a UART link, matched the model in every reply of a 682-frame command flow, and in the spike counts, the final-state snapshot and the first 512 steps of spikes of five excitation/inhibition (E/I) conditions.
+A time-multiplexed network with spike-driven synapses, controlled over a UART link, matched the model in every reply of a 682-frame command flow, and in the spike counts, the final-state snapshot and the first 512 steps of spikes of five excitation/inhibition (E/I) conditions.
 Mutation tests show that the checkers can fail.
 The full design uses 12\% of the logic and 98\% of the block RAM, and meets timing at 38.75~MHz after place and route, against a 27~MHz clock.
 In the model, the mean firing rate of the network falls monotonically as the inhibitory fraction rises, in every combination of the sweep.
-The board runs did not reach the saturation limits of the arithmetic, so the saturation paths are not verified on the board.
+On the board, the current reached its upper and lower limits and the potential its lower limit, and every saturated step matched the model; the upper limit of the potential cannot change the output. The membrane potential of the network was compared only at the last step, so saturation inside the network was not checked.
 We also report the limits we found: a USB--UART link that lost bytes in long unpaced bursts, a command decoder without a time-out, and a spike trace that covers only the first 512 steps.
 The hardware is validated against the model only; we make no claim about biological validity.
 \end{abstract}
@@ -116,7 +116,7 @@ The network of $N=256$ neurons uses one copy of the neuron circuit, shared in ti
 All memories except the spike flags have one write port and one synchronous read port, so the synthesis tool maps them to block RAM.
 The spike flags are small and are read combinationally, so they are kept in distributed memory.
 Written as arrays, the whole state would become flip-flops; an earlier array version needed about 45,000 cells at $N=256$, which does not fit the chip.
-Synaptic input is event driven: when neuron $j$ spikes, its weight row is added to an accumulator for the next step.
+Synaptic input is spike driven: when neuron $j$ spikes, its weight row is added to an accumulator for the next step.
 Two accumulators alternate, one read while the other is written.
 Both phases are pipelined with a one-cycle read latency. The read order keeps consecutive reads on different neurons, so the pipeline never reads a value that is still being written.
 
@@ -187,7 +187,7 @@ C & 2.0 & 0 & $-0.5$ & 15 & 15 & 7 & 20,000 & 0 \\
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.8\linewidth]{m2_fi_board.png}
-\caption{f--I points of parameter set A, board and model, for the 20 constant inputs. Each step reflects an integer inter-spike interval: for a neuron that fires with a fixed interval $T$ the rate is $1/T$, and the refractory period bounds the rate from above. The dead zone of the arithmetic shift only affects the onset near threshold.}
+\caption{f--I points of parameter set A, board and model, for the 20 constant inputs. The input is in real units (the Q8.8 raw value divided by 256); the rate is spikes per time step over 1,000 steps, not Hz. Each step reflects an integer inter-spike interval: for a neuron that fires with a fixed interval $T$ the rate is $1/T$, and the refractory period bounds the rate from above. The dead zone of the arithmetic shift only affects the onset near threshold.}
 \label{fig:fi}
 \end{figure}
 
@@ -214,12 +214,38 @@ Random & 200 & 180,000 & 0 & 0 & 195 \\
 \end{tabular}
 \end{table}
 
+\subsection{Saturation on the board}
+\label{sec:sat}
+The single-neuron update has four saturating additions: the decay of $I$ ($i_1$), the input added to $I$ ($i_2$), the leak of $V$ ($v_1$) and the current added to $V$ ($v_2$).
+The first two cannot saturate. The decay $I-(I\gg k_s)$ lies between $I$ and zero, and the leak $V+((V_{\mathrm{rest}}-V)\gg k_m)$ lies between $V$ and $V_{\mathrm{rest}}$, so both stay in the 16-bit range.
+The upper limit of $v_2$ cannot change the output either. A value clamped there is $32{,}767 \ge \theta$, so the neuron spikes, or it is refractory and the potential is discarded; in both cases the stored potential is $V_{\mathrm{reset}}$, as it would be without the clamp.
+The other three limits change the stored state or the spike decision, and they need a test.
+
+Table~\ref{tab:sat} lists the runs that reached them. The board does not report $I$, so a clamp of $I$ is seen only through the potential it produces. Clamp counts come from a traced copy of the model (\texttt{host/clamp\_census.py}, output in \texttt{results/clamp\_census.log}); the copy is asserted to equal \texttt{fixed.step} at every step.
+The saturation test (\texttt{host/saturation\_board\_test.py}) uses the largest shifts, $k_m=k_s=15$, and constant inputs at the ends of the range, so that $I$ reaches both limits and $V$ reaches its lower limit on the board.
+No run reached the upper limit of $v_2$.
+
+\begin{table}[t]
+\centering
+\caption{Runs that reached a saturation limit, and their comparison with the model. Limits: $I$ and $V$ are the current and potential updates, with upper or lower limit.}
+\label{tab:sat}
+\begin{tabular}{llrrr}
+\toprule
+Runs & Limits reached & Runs with a clamp & Samples & Mismatches \\
+\midrule
+Single neuron, set C (Table~\ref{tab:m2}) & $I$ upper, $V$ lower & 14 of 20 & 20,000 & 0 \\
+Sweep, grid (Table~\ref{tab:sweep}) & $V$ lower & 1,400 of 2,048 sets & 1,843,200 & 0 \\
+Sweep, random (Table~\ref{tab:sweep}) & $V$ lower & 130 of 200 sets & 180,000 & 0 \\
+Saturation test, sets S1 and S2 & $I$ upper and lower, $V$ lower & 10 of 10 runs & 1,000 & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Network on the board}
 The 682-frame flow at $N=256$ gave 1,892 reply bytes, all identical to the model, in 44.4~s (run of 2026-11-06, with the current \texttt{board\_network\_test.py}; log in \texttt{results/}).
 Five E/I conditions then ran on the board, each with 745 frames: $(f_{\mathrm{inh}}, w_{\mathrm{inh}}, w_{\max}, e_{\max}) = (0.2, 1, 10, 30)$, $(0.5, 1, 10, 30)$, $(0.5, 0.5, 10, 30)$, $(0.5, 2, 10, 30)$ and $(0.3, 1.5, 20, 10)$.
 For each, the spike counts, the last-step snapshot and the spikes of the first 512 steps matched the full model.
-The board's counters showed no saturation event in these runs: the largest input magnitude was 1,084 raw in the command flow and between 252 and 622 raw in the E/I runs, far below the limit of 32,767.
-The saturation paths of the arithmetic were therefore not exercised on the board.
+Clamp events inside the network were not counted. Its membrane potential is compared only at the last step (Section~\ref{sec:limits}), so a clamp there would not be seen; the largest input magnitudes were 1,084 raw in the command flow and 252 to 622 raw in the E/I runs. The saturation of the single neuron is reported in Section~\ref{sec:sat}.
 
 \subsection{E/I demonstration (model)}
 \label{sec:ei}
@@ -286,13 +312,14 @@ Maximum clock, after routing & 38.75~MHz & 27~MHz target, met \\
 \label{sec:limits}
 \begin{itemize}
 \item \textbf{Biology.} The hardware is validated against the model only. The E/I demonstration uses synthetic random networks, weights that are not calibrated against data, and rates per time step, not in Hz. We draw no conclusion about neural tissue.
-\item \textbf{Saturation.} The board runs never reached the saturation limits (Section~\ref{sec:results}). Saturation is therefore not verified on the board. The paths that saturate are the ones most likely to hide an error, and they need a dedicated test.
+\item \textbf{Saturation.} The three clamps that can change the output were reached on the board, and every saturated step matched the model (Section~\ref{sec:sat}). The upper clamp of the potential was not reached in any traced run, and it cannot change the output. Clamps inside the network were not counted, and the network's potential was compared only at the last step.
 \item \textbf{Stimulus.} On the board, the input is a constant per neuron, and the sweep uses three constant inputs for 300 steps. Time-varying input was not tested on the board.
 \item \textbf{Membrane potential in the network.} The board compares spikes for the first 512 steps, and $V$ only at the last step. An intermediate $V$ would need a run of that length from rest for each step. A run of more than 512 steps keeps only the counts and the last snapshot after step 512.
+\item \textbf{Reference model.} The Python model is the only reference. It was written with AI assistance (Section~\ref{sec:verify}), and a misreading of the specification would be shared by the model and the hardware, so the board comparison cannot detect it. The unit tests in \texttt{model/test\_fixed.py} check the arithmetic and the update rules on selected cases; they are not an independent implementation. Floating-point simulators are not bit-exact and cannot serve as that reference.
 \item \textbf{Mutation analysis.} About 15 hand-written mutants were run, and no full kill matrix was produced. The cocotb test of the single neuron exercises one mutant, the logical shift.
 \item \textbf{No netlist simulation.} The block-RAM models of the installed toolchain are empty. The synthesis tool prints range warnings for some memory mappings. The board result is our evidence that these do not matter, but it is a test of the cases we ran, not a proof.
 \item \textbf{Parameter space.} All neurons share one parameter set, there is no noise source, and the grid sweep fixes $\theta$, $V_{\mathrm{reset}}$ and $V_{\mathrm{rest}}$ (the random sweep covers them).
-\item \textbf{Protocol.} The additive checksum does not detect swapped bytes. The decoder has no time-out, so a corrupted length field can misalign the frame stream. Some builds accept \texttt{READ\_RECORD} and \texttt{READ\_TRACE} without sending a reply and count them as successful, so the host must not send them. The board has no reset command, so its counters persist until the bitstream is reloaded, and the command-flow test must start from a freshly loaded board.
+\item \textbf{Protocol.} The additive checksum does not detect swapped bytes. The decoder has no time-out, so a corrupted length field can misalign the frame stream. Adding one would need an RTL change, new simulation tests and a new board run, and we have not made that change. Some builds accept \texttt{READ\_RECORD} and \texttt{READ\_TRACE} without sending a reply and count them as successful, so the host must not send them. The board has no reset command, so its counters persist until the bitstream is reloaded, and the command-flow test must start from a freshly loaded board.
 \item \textbf{Timing.} The wait after a run is computed from the number of steps as a worst-case heuristic. We did not verify it against the time the board actually needs.
 \item \textbf{Design choices.} The protocol, the weight scale $w_{\mathrm{shift}}$ and the choice of the E/I test network are our own choices. They were not tuned or compared with alternatives.
 \item \textbf{Connectivity.} The nominal connection probability is $8/N$, but zero weights are excluded, so the effective density is lower. For $f_{\mathrm{inh}}=0.2$ the networks have on average 2.8\% nonzero entries of the $256 \times 256$ matrix (range 2.7\% to 2.9\%), against a nominal 3.1\%.
@@ -304,7 +331,7 @@ Maximum clock, after routing & 38.75~MHz & 27~MHz target, met \\
 We implemented a fixed-point LIF neuron and a 256-neuron network on a low-cost FPGA, and compared both with a Python reference model.
 The single neuron matched the model step by step on the board, over 2,083,200 samples.
 The network matched the model in its command replies, its spike counts and final-state snapshot, and in the first 512 steps of spikes for five E/I conditions.
-The arithmetic saturation paths were not reached on the board, and the membrane potential of the network was not compared step by step.
+The three clamps that can change the output were reached on the board and matched the model step by step (Section~\ref{sec:sat}). The membrane potential of the network was compared only at the last step, and clamps inside the network were not counted.
 The E/I results are model results for synthetic networks and are not a biological claim.
 
 \section*{Availability}

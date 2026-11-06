@@ -89,6 +89,14 @@
 - **驗證：** 模擬 N = 16（T = 200 與 T = 600，後者測 512 的上限與 off-by-one）、N = 64、N = 256（T = 200，682 個封包）的位元組層級比對全部 PASS。變異測試四個都 FAIL（bit 順序、步位址差 1、上限 513、count 上限 8）。板上用 `host/ei_board_test.py` 跑五個 E/I 條件，每個 745 個封包（1 個開始的 READ_STATUS、1 個 WRITE_PARAM、656 個 WRITE_WEIGHTS、3 個 SET_INPUT、1 個 RUN、1 個 READ_STATUS、4 個 READ_COUNTS、4 個 READ_SNAPSHOT、74 個 READ_TRACE），前 512 步的 spike 與 `run_network` 逐位元一致。（先前寫的 736 是腳本的列印總數，漏了開始的狀態讀取與 8 個計數/快照封包，腳本已修正。）
 - **狀態：** 已審閱（2026-11-06）。
 
+## D-014 飽和覆蓋的敘述：以夾位描述，v2 上限不列為待測（2026-11-06）
+
+- **決定：** 論文以「哪一個夾位（i1、i2、v1、v2）在板上被碰到」描述飽和覆蓋，不再用「沒有碰到飽和」概括。v2 的上限不影響輸出，不列為待測項目。i1 與 v1 的兩個方向都不可能飽和（由區間論證，見 `docs/paper/main.tex` 的 Saturation on the board 小節）。
+- **理由：** 追蹤版模型顯示參數組 C（k_m = k_s = 15）與網格、隨機掃描都碰到了 i2+ 與 v2−，板上每一步與模型一致。先前論文說「板上沒有碰到飽和」是錯的。飽和測試（S1、S2）補上 i2−。
+- **影響：** 論文的摘要、結果、限制與結論已改寫。RTL 與 `model/fixed.py` 沒有改動。
+- **驗證：** `host/clamp_census.py` 輸出 `results/clamp_census.log`；`host/saturation_board_test.py` 上板 PASS（1,000 個樣本、0 個不一致），log 在 `results/saturation_board_test_2026-11-06.log`。
+- **狀態：** 草稿（待作者審閱）。
+
 ## 待決定
 
 - [x] 權重縮放：`w_shift` 已在 D-009 定為全域常數
