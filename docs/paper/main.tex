@@ -1,7 +1,6 @@
-% DRAFT of the preprint body (2026-11-04). Not compiled yet: LaTeX is not installed in this environment.
-% Claims and their evidence are in outline.md (C1--C8). The author rewrites the wording; every number
-% here comes from a file named in outline.md or from the CSV/JSON files in build/ and was re-checked
-% on 2026-11-04. Lines starting with "% TODO" or "% CHECK" are open items for the author.
+% Preprint body. Compile with: pdflatex main.tex; bibtex main; pdflatex main.tex (twice).
+% Claims and their evidence are listed in outline.md. Numbers come from the files named there
+% and from build/*.csv, re-checked against the code on 2026-11-04.
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
@@ -11,77 +10,73 @@
 \usepackage{hyperref}
 \graphicspath{{../}}
 
-\title{Bit-Exact Verification of a 256-Neuron Fixed-Point Spiking Network\\ on a Low-Cost FPGA}
+\title{Bit-Level Verification of a Fixed-Point LIF Neuron and a 256-Neuron Spiking Network on a Low-Cost FPGA}
 \author{ChiaAn Lin\thanks{Corresponding author: \href{mailto:ntuhibiki@gmail.com}{ntuhibiki@gmail.com}}\\
-% TODO: affiliation (or "Independent researcher")
+{[Affiliation to be added by the author]}
 }
-\date{Draft, November 2026}
+\date{November 2026}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
 Spiking neuron models are small enough to run on inexpensive FPGAs, but a hardware result is only useful for model-based experiments if one can state exactly how it differs from the model.
-We present a leaky integrate-and-fire (LIF) neuron and a 256-neuron network on a low-cost FPGA (Tang Nano 20K, Gowin GW2AR-18), and we test them against a Python reference model with a strict criterion: no bit may differ.
+We present a leaky integrate-and-fire (LIF) neuron and a 256-neuron network on a low-cost FPGA (Tang Nano 20K, Gowin GW2AR-18), and we test both against a Python reference model.
 The model uses signed Q8.8 fixed-point state, saturating additions and shift-based time constants, so no multiplier is needed.
-On the board, a single neuron matched the model in all 60,000 samples of three hand-picked parameter sets and in all 2,023,200 samples of a sweep of 2,248 parameter sets.
-A time-multiplexed network with event-driven synapses and an order-independent input rule, controlled over a UART link, matched the model on every reply of a 682-frame command flow, and on five excitation/inhibition (E/I) conditions that include the spikes of all 256 neurons in the first 512 steps.
+On the board, the single neuron matched the model at every step of 60,000 samples from three hand-picked parameter sets and of 2,023,200 samples from a sweep of 2,248 parameter sets.
+A time-multiplexed network with event-driven synapses, controlled over a UART link, matched the model in every reply of a 682-frame command flow, and in the spike counts, the final-state snapshot and the first 512 steps of spikes of five excitation/inhibition (E/I) conditions.
 Mutation tests show that the checkers can fail.
-The full design uses 12\% of the logic and 97\% of the block RAM, and meets timing at 41.38~MHz against a 27~MHz clock.
-A model sweep of 504 runs shows that the mean firing rate falls monotonically as the inhibitory fraction rises, in all 24 parameter combinations.
-We also report the limits we found: a USB--UART bridge that drops bytes in long bursts, a command decoder without a time-out, and a spike trace that covers only the first 512 steps.
+The full design uses 12\% of the logic and 98\% of the block RAM, and meets timing at 38.75~MHz after place and route, against a 27~MHz clock.
+In the model, the mean firing rate of the network falls monotonically as the inhibitory fraction rises, in every combination of the sweep.
+The board runs did not reach the saturation limits of the arithmetic, so the saturation paths are not verified on the board.
+We also report the limits we found: a USB--UART link that lost bytes in long unpaced bursts, a command decoder without a time-out, and a spike trace that covers only the first 512 steps.
 The hardware is validated against the model only; we make no claim about biological validity.
 \end{abstract}
 
 \section{Introduction}
-Networks of spiking neurons with excitatory and inhibitory populations are a standard tool for studying how the balance between excitation and inhibition shapes neural activity \citep{brunel2000}.
-% CHECK: Brunel 2000: full text not read (metadata only). Keep this sentence at the level of "the class of network studied"; add no claim about its results.
-Such networks are small enough to run on inexpensive FPGAs, and many FPGA designs for spiking networks exist \citep{szczerek2025}.
+Networks of spiking neurons with excitatory and inhibitory populations are used to study how the balance between excitation and inhibition shapes neural activity.
+Such networks are small enough to run on inexpensive FPGAs, and many FPGA designs for spiking networks have been reported \citep{szczerek2025}.
 
-A hardware result is only as useful as the answer to one question: how does it differ from the model it implements?
-Fixed-point hardware raises this question sharply.
-Quantisation, saturation and the choice between arithmetic and logical shifts each change the numbers, and a mistake in any of them can leave the average behaviour almost intact while changing individual spikes.
-A check by task accuracy, or by general agreement with a simulator, can miss such differences.
-Several reports we read validate a design in this way \citep{fan2025,gautam2025}.
-% CHECK: Fan 2025 and Gautam 2025 (notes in docs/papers/notes): Fan reports accuracy on MNIST; Gautam reports functional agreement for inference. Do not generalise beyond what was read.
-A stricter criterion is available: require that the hardware state after every step equals the state of a reference model, with zero differences.
-This turns the check into a yes-or-no test that a single flipped bit can fail.
+A hardware result is only useful for model-based experiments if one knows how it differs from the model it implements.
+Fixed-point hardware makes this question sharp: quantisation, saturation and the choice between arithmetic and logical shifts each change the numbers, and an error in any of them can leave the average behaviour almost intact while changing individual spikes.
+Validation by task accuracy, or by agreement with a simulator, can miss such errors, and some FPGA reports validate their designs this way \citep{fan2025,gautam2025}.
+A stricter test asks that the hardware state after every step equals the state of a reference model, with zero differences, so that a single flipped bit makes the test fail.
 
-Bit-accurate comparison has been used in FPGA work before.
-For example, an integer-LIF accelerator for image classification was checked against a bit-accurate software model \citep{ansari2026}.
-Other designs aim at speed or scale, such as a systolic simulator built around updating only the neurons that spike \citep{cheung2009}.
+Bit-accurate software models are also used as references for FPGA designs.
+An integer-LIF accelerator for image classification was checked against a bit-accurate software model, while the hardware itself was checked on a sample of inputs rather than step by step \citep{ansari2026}.
+A systolic simulator built around updating only the neurons that spike is an example of a design aimed at speed and scale \citep{cheung2009}.
 These designs target other boards and tasks, and their numbers are not comparable with ours.
 
-This paper applies the strict criterion to a recurrent network with inhibitory connections on a low-cost board.
+This paper applies the strict test to a single neuron and to a recurrent network with excitatory and inhibitory sources, on a low-cost board.
 We make three contributions.
 \begin{enumerate}
-\item \textbf{An exact specification.} A fixed-point LIF neuron with saturating additions, arithmetic shifts and shift-based time constants, and a network input rule that sums the synaptic contributions exactly and saturates once, so the result does not depend on the order in which spikes arrive.
-\item \textbf{A verification method.} The model is the specification. It is checked in simulation, with mutation tests that show the checkers can fail, and on the board, step by step. For a single neuron this covers 2,083,200 sampled steps; for the network it covers a 682-frame command flow and five E/I conditions.
-\item \textbf{A 256-neuron network on a low-cost board.} A UART-controlled, time-multiplexed network, with its resource use and the limits we measured: a USB--UART bridge that drops bytes in long bursts, a decoder without a time-out, and a spike trace that covers only 512 steps.
+\item \textbf{An exact specification.} A fixed-point LIF neuron with saturating additions and arithmetic shifts, and a network input rule that sums the synaptic contributions exactly and saturates once. Because the sum is exact, the result does not depend on the order in which the sources are added.
+\item \textbf{A verification method.} The model is the specification. The method combines simulation, mutation tests and board comparison. For the single neuron, the board comparison is step by step (membrane potential and spike) and covers 2,083,200 samples. For the network, the board comparison covers a 682-frame command flow, and for five E/I conditions the spike counts, the final-state snapshot and the spikes of the first 512 steps. The membrane potential of the network is compared only at the last step.
+\item \textbf{A 256-neuron network on a low-cost board.} A UART-controlled, time-multiplexed network, with its resource use and the limits we measured: the link lost bytes in long unpaced bursts, the decoder has no time-out, and the spike trace covers 512 steps.
 \end{enumerate}
-We also include one E/I experiment in the model, in which the fraction of inhibitory sources is varied, and we run five of its conditions on the board.
-Its purpose is to show that the hardware and the model agree while the E/I balance changes, not to draw conclusions about neural tissue.
-The hardware is validated against the model only, and we make no claim about biological validity.
+We also include an E/I experiment in the model, in which the fraction of inhibitory sources is varied, and we run five of its conditions on the board.
+Its purpose is to show that the hardware and the model agree while the E/I balance changes. It does not support conclusions about neural tissue.
 
 The paper is organised as follows.
 Section~\ref{sec:model} defines the model, Section~\ref{sec:hardware} the hardware, and Section~\ref{sec:verify} the verification method.
-Section~\ref{sec:results} gives the board results and the E/I demonstration, Section~\ref{sec:resources} the resource use, and Section~\ref{sec:limits} the limitations.
+Section~\ref{sec:results} gives the board results and the E/I demonstration, Section~\ref{sec:resources} the resource use, Section~\ref{sec:limits} the limitations, and Section~\ref{sec:conclusion} concludes.
 
 \section{Model}
 \label{sec:model}
 \subsection{Single neuron}
-The neuron is discrete in time \citep[for continuous-time LIF models see][]{gerstner2002}. Each step updates a membrane potential $V$ and a synaptic current $I$:
+Each step updates a membrane potential $V$ and a synaptic current $I$:
 \begin{align}
 I[t+1] &= I[t] - \left(I[t] \gg k_s\right) + x[t], \\
 V[t+1] &= V[t] + \left((V_{\mathrm{rest}} - V[t]) \gg k_m\right) + I[t+1],
 \end{align}
-where $x[t]$ is the input of the step.
-If the neuron is not refractory and $V[t+1] \ge \theta$, it emits a spike, $V$ is set to $V_{\mathrm{reset}}$, and the neuron is refractory for $\mathit{refrac}$ steps.
+where $x[t]$ is the input of the step and every addition saturates (Section~\ref{sec:numfmt}).
+We write $s[t]$ for the spike flag of step $t$. If the neuron is not refractory and $V[t+1] \ge \theta$, it emits a spike, $s[t+1]=1$, $V$ is set to $V_{\mathrm{reset}}$, and the neuron is refractory for $\mathit{refrac}$ steps.
 While it is refractory, $V$ is held at $V_{\mathrm{reset}}$ and $I$ keeps integrating.
 The parameters are $\theta$, $V_{\mathrm{reset}}$, $V_{\mathrm{rest}}$, $k_m$ and $k_s$ (0--15), and $\mathit{refrac}$ (0--7).
 A right shift by $k$ divides by $2^k$, so the time constants are $\Delta t/\tau = 2^{-k}$.
 
 \subsection{Number format}
+\label{sec:numfmt}
 $V$ and $I$ are signed 16-bit numbers in Q8.8 format (raw value = real value $\times 256$).
 Three rules fix the arithmetic exactly:
 \begin{itemize}
@@ -89,18 +84,19 @@ Three rules fix the arithmetic exactly:
 \item Right shifts are arithmetic (they round toward $-\infty$).
 \item $V_{\mathrm{rest}} - V$ is computed with more than 16 bits before the shift, because the difference of two 16-bit values may need 17 bits.
 \end{itemize}
-Saturation avoids a strong excitatory input turning into a strong inhibitory one by wrapping. A logical shift would turn a decaying negative potential into a large positive one. Both are easy to get wrong in hardware, and both are caught by the checks in Section~\ref{sec:verify}.
+A wrap would turn a strong excitatory input into a strong inhibitory one, and a logical shift would turn a decaying negative potential into a large positive one.
+The mutation tests in Section~\ref{sec:verify} include the logical shift. They do not cover every wrap or saturation variant, which is a limitation (Section~\ref{sec:limits}).
 The reference is a short Python function (\texttt{model/fixed.py}); the hardware must match it exactly.
 
 \subsection{Network}
-All neurons share one parameter set. For neuron $i$ at step $t$ the input is
+All neurons share one parameter set. Let $s_j[t]$ be the spike flag of neuron $j$ at step $t$. The input of neuron $i$ at step $t$ is
 \begin{equation}
 x_i[t] = \mathrm{sat}\!\left(\sum_j \left(W_{ji} \ll w_{\mathrm{shift}}\right) s_j[t-1] \;+\; \mathrm{ext}_i\right),
 \end{equation}
-where $W$ is a matrix of signed 8-bit weights, $w_{\mathrm{shift}}=2$ is a global scale, $s_j[t-1]$ is the spike of neuron $j$ in the previous step, and $\mathrm{ext}_i$ is a constant external input.
-The sum over spikes is exact, the external input is added to it, and the total saturates once.
-This differs from the single-neuron rule on purpose: the hardware processes spikes as events, in an order that depends on arrival, so saturating after each addition would make the result depend on that order.
-An exact sum followed by one saturation does not. A spike at step $t$ reaches the inputs at step $t+1$.
+where $W_{ji}$ is a signed 8-bit weight from neuron $j$ to neuron $i$ (self-connections are allowed, and a zero weight means no connection), $w_{\mathrm{shift}}=2$ is a global scale, and $\mathrm{ext}_i$ is a constant external input.
+The sum over sources is exact, the external input is added to it, and the total saturates once.
+This differs from the single-neuron rule on purpose. The hardware visits the sources in a fixed order, and an exact sum followed by a single saturation gives the same result for every order.
+A spike at step $t$ reaches the inputs at step $t+1$.
 
 \section{Hardware}
 \label{sec:hardware}
@@ -111,26 +107,27 @@ The decoder on the FPGA rejects a frame with a bad checksum or an out-of-range v
 
 \subsection{Single neuron}
 One neuron step takes one clock cycle: the update is a combinational circuit, and the state is held in registers.
-Each step writes $\{$spike, $V\}$ (17 bits) to a record memory of 1,024 steps in block RAM. The host reads the records back in batches.
+Each step writes $\{$spike, $V$\} (17 bits) to a record memory of 1,024 steps in block RAM. The host reads the records back in batches.
 Each run starts from rest ($V=0$, $I=0$, no refractory time), the same initial condition as the model.
 
 \subsection{Network}
 \label{sec:network-hw}
 The network of $N=256$ neurons uses one copy of the neuron circuit, shared in time: one step takes $N$ neuron updates followed by the synapse phase.
-All memories (neuron state, external input, weights, spike flags and synaptic accumulators) have one write port and one synchronous read port, so the synthesis tool maps them to block RAM.
-The same memories written as arrays become flip-flops, which needs about 45,000 cells at $N=256$ and does not fit.
+All memories except the spike flags have one write port and one synchronous read port, so the synthesis tool maps them to block RAM.
+The spike flags are small and are read combinationally, so they are kept in distributed memory.
+Written as arrays, the whole state would become flip-flops; an earlier array version needed about 45,000 cells at $N=256$, which does not fit the chip.
 Synaptic input is event driven: when neuron $j$ spikes, its weight row is added to an accumulator for the next step.
 Two accumulators alternate, one read while the other is written.
 Both phases are pipelined with a one-cycle read latency. The read order keeps consecutive reads on different neurons, so the pipeline never reads a value that is still being written.
 
-The board does not keep the full state of every step: at $N=256$ and 1,024 steps, that would need about 4.4~Mbit, and the block RAM holds about 828~Kbit.
-The board keeps a 16-bit spike count and a last-step snapshot of every neuron ($33N$ bits), and the spikes of every neuron for the first 512 steps of a run (one bit per neuron and step, 128~Kbit), returned seven steps per frame.
+The board does not keep the full state of every step. At $N=256$ and 1,024 steps, the full state would need 4,352~Kbit ($256 \times 1{,}024 \times 17$ bits), and the block RAM holds about 828~Kbit.
+The board therefore keeps, per neuron, a 16-bit spike count and a 17-bit snapshot of the last step (33 bits in total), and the spike flags of every neuron for the first 512 steps of a run (1 bit per neuron and step, 128~Kbit), returned seven steps per frame.
 The membrane potential is therefore compared only at the last step, which is the main limit of the network verification (Section~\ref{sec:limits}).
 
 \section{Verification}
 \label{sec:verify}
 The model is the specification, and a difference of one bit is a failure.
-The verification has four layers.
+The verification has several layers.
 
 \paragraph{Simulation.}
 The single neuron was checked with cocotb and Icarus Verilog against the model: 10,110 combinational cases and 15 traces of 500 steps each.
@@ -138,9 +135,10 @@ The network core was checked against the model for $N=16, 64, 256$ over 3,200, 1
 
 \paragraph{Mutation tests.}
 A checker that has never failed does not show that it can fail.
-Each checker was therefore run on deliberately broken copies of the design, and each broken copy was caught.
+Each checker was therefore run on deliberately broken copies of the design. Each of the roughly 15 hand-written mutants was caught by its checker.
 Examples: replacing the arithmetic shift with a logical shift (single neuron); a weight shift of 3, a missing last target, no spike delivery, and a write to the wrong accumulator (network core); swapped input bytes, an off-by-one range check and a wrong read-modify-write timing (full design); a changed bit order, a step address off by one, a limit of 513 instead of 512 steps and a limit of eight instead of seven steps per frame (spike trace); and a status read that ignores the busy signal (busy test).
-The byte-level testbench of the single neuron exposed a real design error early: a first version sent a second run while the previous reply was still being sent, which overwrote the record memory. The busy rule of Section~\ref{sec:hardware} is the fix.
+This is not a complete mutation analysis, and it does not show that every possible error is caught.
+An early byte-level testbench of the single neuron exposed a real design error: a second run was sent while the previous reply was still being sent, which overwrote the record memory. The busy rule of Section~\ref{sec:hardware} is the fix.
 
 \paragraph{Board, single neuron.}
 The host writes the parameters, confirms them with a status read, runs the neuron, reads every step's $V$ and spike back and compares them with the model.
@@ -150,16 +148,16 @@ The host sends the full command flow of 682 frames (70,168 bytes in, 1,892 bytes
 The flow contains deliberately invalid frames, which must be refused without changing any state.
 The E/I conditions are compared in the same way: spike counts, last-step snapshot and the spikes of the first 512 steps against the full model.
 
-\paragraph{Not possible: netlist simulation.}
+\paragraph{No netlist simulation.}
 The block-RAM simulation models that come with the installed toolchain are empty, so a netlist simulation cannot run.
-The board result is therefore the evidence that the synthesised design is functionally correct.
+We therefore use the board comparison as the functional evidence for the synthesised design. It covers the cases we ran, not all cases.
 
 \section{Results}
 \label{sec:results}
 \subsection{Single neuron on the board}
 Table~\ref{tab:m2} shows three parameter sets with 20 constant input currents each (from $-0.1$ to $0.375$) and 1,000 steps per input.
 All 60,000 samples matched the model, and the error counter of the board stayed at zero.
-Figure~\ref{fig:trace} shows the first 100 steps of one run, and Figure~\ref{fig:fi} the f--I points of the board against the model.
+Figure~\ref{fig:trace} shows the first 100 steps of parameter set A, and Figure~\ref{fig:fi} the f--I points of the same run against the model.
 
 \begin{table}[t]
 \centering
@@ -179,19 +177,19 @@ C & 2.0 & 0 & $-0.5$ & 15 & 15 & 7 & 20,000 & 0 \\
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{m2_trace_board_vs_model.png}
-\caption{Membrane potential and spikes of parameter set A, board against model, first 100 of 1,000 steps. TODO: check the caption against \texttt{host/plot\_trial.py}.}
+\caption{Membrane potential and spikes of parameter set A, board against model, first 100 of 1,000 steps. The potential is the recorded value after the step, so at a spike it shows the reset value rather than a crossing of $\theta$.}
 \label{fig:trace}
 \end{figure}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.8\linewidth]{m2_fi_board.png}
-\caption{f--I curve: board points and model. The staircase comes from the refractory period and the dead zone of the arithmetic shift.}
+\caption{f--I points of parameter set A, board and model, for the 20 constant inputs. Each step reflects an integer inter-spike interval: for a neuron that fires with a fixed interval $T$ the rate is $1/T$, and the refractory period bounds the rate from above. The dead zone of the arithmetic shift only affects the onset near threshold.}
 \label{fig:fi}
 \end{figure}
 
-The fixed-point and floating-point models agree in shape, with a largest difference of 0.027 spikes per step (\texttt{docs/fi\_curve.png}).
-% TODO: decide whether to include docs/fi_curve.png as a third figure.
+The fixed-point and floating-point versions of the same neuron agree in shape, with a largest difference of 0.027 spikes per step (\texttt{docs/fi\_curve.png}).
+That comparison uses the defaults of \texttt{lif.Params} ($\theta=1.0$, $V_{\mathrm{reset}}=0$, $V_{\mathrm{rest}}=0$, $k_m=4$, $k_s=2$, $\mathit{refrac}=2$), input currents from 0 to 0.1 and 2,000 steps. It does not use the parameter sets of Table~\ref{tab:m2}.
 
 \subsection{Parameter sweep}
 Table~\ref{tab:sweep} covers every legal value of $k_m$, $k_s$ and $\mathit{refrac}$, and 200 random parameter sets.
@@ -201,7 +199,7 @@ Sets without spikes (24 grid, 5 random) are included on purpose: a silent neuron
 
 \begin{table}[t]
 \centering
-\caption{Parameter sweep on the board. Grid: $\theta=1.0$, $V_{\mathrm{reset}}=-0.25$, $V_{\mathrm{rest}}=0.125$ fixed. Random: all six parameters drawn at random (seed 20261103).}
+\caption{Parameter sweep on the board. Grid: $\theta=1.0$, $V_{\mathrm{reset}}=-0.25$ and $V_{\mathrm{rest}}=0.125$ fixed, $k_m$, $k_s$ and $\mathit{refrac}$ over all legal values. Random: seed 20261103, each parameter drawn uniformly over the ranges $\theta\in[64,1024]$, $V_{\mathrm{reset}}\in[-512,256]$, $V_{\mathrm{rest}}\in[-512,512]$, $k_m, k_s \in [0,15]$ and $\mathit{refrac}\in[0,7]$ (voltages as Q8.8 raw values).}
 \label{tab:sweep}
 \begin{tabular}{lrrrrrr}
 \toprule
@@ -215,56 +213,59 @@ Random & 200 & 180,000 & 0 & 0 & 195 \\
 
 \subsection{Network on the board}
 The 682-frame flow at $N=256$ gave 1,892 reply bytes, all identical to the model, in 45.7~s.
-Five E/I conditions then ran on the board, each with 745 frames and the spikes of the first 512 steps: $(f_{\mathrm{inh}}, w_{\mathrm{inh}}, w_{\max}, e_{\max}) = (0.2, 1, 10, 30)$, $(0.5, 1, 10, 30)$, $(0.5, 0.5, 10, 30)$, $(0.5, 2, 10, 30)$ and $(0.3, 1.5, 20, 10)$.
-All five matched the full model bit for bit.
+Five E/I conditions then ran on the board, each with 745 frames: $(f_{\mathrm{inh}}, w_{\mathrm{inh}}, w_{\max}, e_{\max}) = (0.2, 1, 10, 30)$, $(0.5, 1, 10, 30)$, $(0.5, 0.5, 10, 30)$, $(0.5, 2, 10, 30)$ and $(0.3, 1.5, 20, 10)$.
+For each, the spike counts, the last-step snapshot and the spikes of the first 512 steps matched the full model.
+The board's counters showed no saturation event in these runs: the largest input magnitude was 1,084 raw in the command flow and between 252 and 622 raw in the E/I runs, far below the limit of 32,767.
+The saturation paths of the arithmetic were therefore not exercised on the board.
 
 \subsection{E/I demonstration (model)}
 \label{sec:ei}
-The demonstration uses random networks of 256 neurons with a connection probability of $8/N$, a fraction $f_{\mathrm{inh}}$ of inhibitory sources, and excitatory weights drawn from $[0, w_{\max}]$ with $w_{\max}=10$.
+The demonstration uses random networks of 256 neurons with a connection probability of $8/N$, a fraction $f_{\mathrm{inh}}$ of inhibitory sources, and excitatory weights drawn from $[0, w_{\max}]$ with $w_{\max}=10$. Inhibitory weights are $-w_{\mathrm{inh}}$ times a weight of the same range, with $w_{\mathrm{inh}}=1$ unless stated.
 Each neuron has a constant external input drawn from $[0, e_{\max}]$ (Q8.8 raw) with $e_{\max}=30$. Each run has 600 steps, and the first 100 are discarded.
-Table~\ref{tab:ei} gives the mean firing rate in spikes per step and per neuron. It falls monotonically as $f_{\mathrm{inh}}$ rises, and the share of silent neurons rises.
-A full sweep of 504 runs, which also varied $w_{\mathrm{inh}}$, $w_{\max}$ and $e_{\max}$, was monotone in all 24 parameter combinations (tolerance 0.005).
-Only the five conditions listed above also ran on the board.
+Table~\ref{tab:ei} gives the mean firing rate in spikes per step and per neuron, over 10 random networks. The spread is the minimum and maximum over the networks.
+The rate falls as $f_{\mathrm{inh}}$ rises, and the share of silent neurons rises.
+The full sweep covers 24 combinations of $w_{\max}$, $w_{\mathrm{inh}}$ and $e_{\max}$, each with seven values of $f_{\mathrm{inh}}$ and 10 networks (1,680 runs).
+In all 24 combinations the mean rate falls monotonically with $f_{\mathrm{inh}}$, and it does so in every individual network.
+The five board conditions use the same generator and the first seed (20261104), so each board condition is one of the networks of this sweep.
 We had to lower $w_{\max}$ from 60 to 10: with 60, the network was either silent or at the refractory limit of 1/3 spikes per step, and the external input no longer mattered.
-For $f_{\mathrm{inh}}<0.2$ most neurons sit near that limit, so the useful range of the perturbation is about 0.2 to 0.6.
+At $f_{\mathrm{inh}}=0$, on average 78\% of neurons fire above 0.3 spikes per step, close to the refractory limit of 1/3 (65\% to 84\% across the networks). The decrease at the low-inhibition end is therefore partly a ceiling effect. The useful range of the perturbation is about 0.2 to 0.6.
 
 \begin{table}[t]
 \centering
-\caption{Mean firing rate against $f_{\mathrm{inh}}$ ($w_{\max}=10$, $e_{\max}=30$, $w_{\mathrm{inh}}=1$): mean over three random networks (minimum--maximum in brackets), and share of silent neurons. Model only. Rates are per time step, not in Hz.}
+\caption{Mean firing rate against $f_{\mathrm{inh}}$ ($w_{\max}=10$, $e_{\max}=30$, $w_{\mathrm{inh}}=1$), averaged over 10 random networks, with the minimum--maximum over networks in brackets, and the share of silent neurons. Source: \texttt{build/ei\_full\_sweep.csv}, from \texttt{host/ei\_full\_sweep.py}, the generator also used for the board runs. Model only. Rates are per time step, not in Hz.}
 \label{tab:ei}
 \begin{tabular}{rcc}
 \toprule
 $f_{\mathrm{inh}}$ & Mean rate (min--max) & Silent neurons \\
 \midrule
-0.0 & 0.316 (0.313--0.319) & 0.00 \\
-0.1 & 0.291 (0.284--0.294) & 0.01 \\
-0.2 & 0.249 (0.242--0.253) & 0.02 \\
-0.3 & 0.210 (0.201--0.217) & 0.07 \\
-0.4 & 0.175 (0.171--0.181) & 0.13 \\
-0.5 & 0.149 (0.146--0.154) & 0.19 \\
-0.6 & 0.123 (0.120--0.130) & 0.26 \\
+0.0 & 0.314 (0.301--0.320) & 0.00 \\
+0.1 & 0.290 (0.273--0.296) & 0.01 \\
+0.2 & 0.251 (0.243--0.259) & 0.03 \\
+0.3 & 0.210 (0.197--0.221) & 0.07 \\
+0.4 & 0.176 (0.163--0.189) & 0.13 \\
+0.5 & 0.143 (0.135--0.158) & 0.20 \\
+0.6 & 0.121 (0.106--0.137) & 0.26 \\
 \bottomrule
 \end{tabular}
 \end{table}
-% TODO: add docs/ei_rate_vs_finh.png as a figure instead of, or beside, the table.
 
 \subsection{Link limits}
-The USB--UART bridge on the board lost bytes in long unpaced bursts: a single write of 96 or 128 bytes returned only 66 bytes in a loopback test, while 16-byte chunks paced to the line rate all came back.
+The USB--UART link on the board lost bytes in long unpaced bursts: a single write of 96 or 128 bytes returned only 66 bytes in a loopback test, while 16-byte chunks paced to the line rate all came back.
+We did not isolate the cause; it may lie in the bridge chip or in the host driver.
 The host therefore sends in 16-byte chunks at line speed, and waits for the full reply of a frame before it sends the next one.
-A run takes no reply, so the host waits for a time computed from the number of steps: in the worst case a step takes $N+N^2+2N$ clock cycles.
+A run takes no reply, so the host waits for a time computed from the number of steps. This is a heuristic bound that we did not verify against the board's actual run time (Section~\ref{sec:limits}).
 
 \section{Resources and scaling}
 \label{sec:resources}
 Table~\ref{tab:res} gives the place-and-route result of the full design at $N=256$.
-A single neuron needs about 274 LUTs.
-The network core alone (yosys) came to 1,382, 1,343 and 1,457 cells at $N=16, 64, 256$: its size is almost independent of $N$, because the state and the weights are in block RAM.
+The single-neuron logic (\texttt{lif\_core} alone, an early yosys run without the state memory) needed about 274 LUTs.
+The yosys cell counts of the network core, 1,382, 1,343 and 1,457 at $N=16, 64, 256$, include I/O buffers and the RAM16SDP4 cells that the tool uses for small memories, so they are not comparable across $N$.
 Block RAM is what limits the design: the weight matrix alone is $N^2 \times 8$ bits (512~Kbit), and the spike trace takes eight more blocks. With 45 of 46 blocks used, we cannot add a feature without first freeing memory.
-The weight matrix grows as $N^2$: for $N=512$ it would be 2~Mbit, more than the roughly 828~Kbit of block RAM on the chip.
-% CHECK: the $N=512$ figure is arithmetic from the N^2 weight matrix, not a built or measured design. Keep it or remove it.
+For $N=512$ the weight matrix would be 2~Mbit, more than the roughly 828~Kbit of block RAM on the chip. This is arithmetic from the $N^2$ weight matrix, not a built design.
 
 \begin{table}[t]
 \centering
-\caption{Full design at $N=256$ (nextpnr-himbaechel, GW2AR-18).}
+\caption{Full design at $N=256$ (nextpnr-himbaechel, GW2AR-18). Source: \texttt{fpga/build/make\_network\_top\_2026-11-04.log}, a complete rebuild (\texttt{make -B TOP=network\_top}); the maximum clock is the critical-path report after routing.}
 \label{tab:res}
 \begin{tabular}{lrr}
 \toprule
@@ -272,8 +273,8 @@ Resource & Used & Available \\
 \midrule
 LUT4 & 2,536 & 20,736 (12\%) \\
 Flip-flops & 1,315 & 15,552 (8\%) \\
-Block RAM & 45 & 46 (97\%) \\
-Maximum clock & 41.38~MHz & 27~MHz target, met \\
+Block RAM & 45 & 46 (98\%) \\
+Maximum clock, after routing & 38.75~MHz & 27~MHz target, met \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -282,20 +283,39 @@ Maximum clock & 41.38~MHz & 27~MHz target, met \\
 \label{sec:limits}
 \begin{itemize}
 \item \textbf{Biology.} The hardware is validated against the model only. The E/I demonstration uses synthetic random networks, weights that are not calibrated against data, and rates per time step, not in Hz. We draw no conclusion about neural tissue.
+\item \textbf{Saturation.} The board runs never reached the saturation limits (Section~\ref{sec:results}). Saturation is therefore not verified on the board. The paths that saturate are the ones most likely to hide an error, and they need a dedicated test.
+\item \textbf{Stimulus.} On the board, the input is a constant per neuron, and the sweep uses three constant inputs for 300 steps. Time-varying input was not tested on the board.
 \item \textbf{Membrane potential in the network.} The board compares spikes for the first 512 steps, and $V$ only at the last step. An intermediate $V$ would need a run of that length from rest for each step. A run of more than 512 steps keeps only the counts and the last snapshot after step 512.
+\item \textbf{Mutation analysis.} About 15 hand-written mutants were run, and no full kill matrix was produced. The cocotb test of the single neuron exercises one mutant, the logical shift.
 \item \textbf{No netlist simulation.} The block-RAM models of the installed toolchain are empty. The synthesis tool prints range warnings for some memory mappings. The board result is our evidence that these do not matter, but it is a test of the cases we ran, not a proof.
 \item \textbf{Parameter space.} All neurons share one parameter set, there is no noise source, and the grid sweep fixes $\theta$, $V_{\mathrm{reset}}$ and $V_{\mathrm{rest}}$ (the random sweep covers them).
-\item \textbf{Protocol.} The additive checksum does not detect swapped bytes. The decoder has no time-out, so a corrupted length field can misalign the frame stream. The board has no reset command, so its counters persist until the bitstream is reloaded, and the command-flow test must start from a freshly loaded board.
-\item \textbf{Draft decisions.} The protocol, the weight scale $w_{\mathrm{shift}}$ and the choice of the E/I test network are our own decisions and are not tuned or compared with alternatives.
-\item \textbf{Samples.} Each E/I data point uses three random networks and one external-input sample. The board ran five conditions of the 24.
+\item \textbf{Protocol.} The additive checksum does not detect swapped bytes. The decoder has no time-out, so a corrupted length field can misalign the frame stream. Some builds accept \texttt{READ\_RECORD} and \texttt{READ\_TRACE} without sending a reply and count them as successful, so the host must not send them. The board has no reset command, so its counters persist until the bitstream is reloaded, and the command-flow test must start from a freshly loaded board.
+\item \textbf{Timing.} The wait after a run is computed from the number of steps as a worst-case heuristic. We did not verify it against the time the board actually needs.
+\item \textbf{Design choices.} The protocol, the weight scale $w_{\mathrm{shift}}$ and the choice of the E/I test network are our own choices. They were not tuned or compared with alternatives.
+\item \textbf{Connectivity.} The nominal connection probability is $8/N$, but zero weights are excluded, so the effective density is lower. For $f_{\mathrm{inh}}=0.2$ the networks have on average 2.8\% nonzero entries of the $256 \times 256$ matrix (range 2.7\% to 2.9\%), against a nominal 3.1\%.
+\item \textbf{Samples.} Each E/I data point uses 10 random networks and one external-input sample per network. The board ran five conditions of the 24 combinations of the sweep.
 \end{itemize}
 
+\section{Conclusion}
+\label{sec:conclusion}
+We implemented a fixed-point LIF neuron and a 256-neuron network on a low-cost FPGA, and compared both with a Python reference model.
+The single neuron matched the model step by step on the board, over 2,083,200 samples.
+The network matched the model in its command replies, its spike counts and final-state snapshot, and in the first 512 steps of spikes for five E/I conditions.
+The arithmetic saturation paths were not reached on the board, and the membrane potential of the network was not compared step by step.
+The E/I results are model results for synthetic networks and are not a biological claim.
+
 \section*{Availability}
-% TODO: repository link (decide before submission). The repository contains the model, RTL, testbenches, host scripts and the raw results in build/.
+The code, RTL, testbenches and host scripts are in the repository \url{https://github.com/KiraIch/fpga-lif-snn}, branch \texttt{m3-network}. [Repository visibility and the commit to cite to be confirmed by the author.]
+The raw results (sweep CSVs, board logs and place-and-route logs) are not yet in the repository; they are to be placed in a \texttt{results/} directory before submission.
+
+\section*{Declarations}
+\textbf{Competing interests.} [To be confirmed by the author.]\\
+\textbf{Funding.} [To be confirmed by the author.]\\
+\textbf{Author contributions.} [To be confirmed by the author.]\\
+\textbf{Ethics.} Not applicable: no human or animal data were used.
 
 \section*{AI-assisted development}
-This project was developed with Claude Code. Design decisions, the verification method, and the accept/reject judgments are the author's. See \texttt{docs/DECISIONS.md}.
-% CHECK: align this statement with README.md and with the Research Square AI-use rules before submission.
+This work was developed with Claude Code, an AI coding assistant. The assistant wrote and edited code, tests and text under the direction of the author. The author chose the design, the verification method and the claims, and checked the results. The author is responsible for every claim in this paper.
 
 \bibliographystyle{unsrtnat}
 \bibliography{references}

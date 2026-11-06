@@ -14,7 +14,7 @@ A leaky integrate-and-fire (LIF) spiking neuron on a low-cost FPGA (Tang Nano 20
 | Full parameter sweep on the board | done: 2,248 sets, 0 mismatches (see [Parameter sweep](#parameter-sweep)) |
 | 256-neuron network core, bit-exact in simulation (M3) | done for N = 16, 64, 256 (see [Network](#4-256-neuron-network-m3)) |
 | Network with UART commands on the board | done: N = 256 command flow, 682 frames, 0 mismatches |
-| E/I perturbation experiment | model sweep of 504 runs done; 5 conditions on the board, 0 mismatches |
+| E/I perturbation experiment | model sweep of 1,680 runs (10 networks per combination) done; 5 conditions on the board, 0 mismatches |
 
 ## 1. The neuron and its number format
 
@@ -117,8 +117,8 @@ Resource use of the full design at N = 256 (nextpnr, GW2AR-18):
 |---|---|---|
 | LUT4 | 2,536 | 20,736 (12%) |
 | Flip-flops | 1,315 | 15,552 (8%) |
-| Block RAM | 45 | 46 (97%) |
-| Maximum clock | 41.38 MHz | 27 MHz target, met |
+| Block RAM | 45 | 46 (98%) |
+| Maximum clock (after routing) | 38.75 MHz | 27 MHz target, met |
 
 ### Verification
 
@@ -156,7 +156,7 @@ Mean firing rate (spikes per neuron per step; the refractory limit is about 0.33
 
 ![Firing rate vs f_inh](docs/ei_rate_vs_finh.png)
 
-- **Full sweep:** 504 runs covering `f_inh` 0 to 0.6, `w_inh` 0.5 to 2.0, `w_max` 10 and 20, and `e_max` 10, 30 and 60, with three networks per combination. The rate falls as `f_inh` rises in all 24 combinations.
+- **Full sweep:** 1,680 runs covering `f_inh` 0 to 0.6, `w_inh` 0.5 to 2.0, `w_max` 10 and 20, and `e_max` 10, 30 and 60, with ten networks per combination. The mean rate falls as `f_inh` rises in all 24 combinations, and in every individual network.
 - **Usable range:** at `w_max` = 10 and `e_max` = 30, most neurons sit near the refractory limit when `f_inh` is 0 (79% above rate 0.3). The informative range is `f_inh` 0.2 to 0.6.
 - **Why `w_max` = 10:** with `w_max` = 60 the network is driven by its own recurrence. It is either silent or saturated, whatever the external input. The value `w_max` = 10 is a choice for this experiment, not a calibration to biology.
 - **Board:** five conditions were run on the board, each with 745 frames. Every reply matched the full model, which is the reference here: the counts and last-step snapshot for all 256 neurons, and the spikes of the first 512 steps. The board-side rate printed by the script is over all 600 steps; the table above uses the mean after the first 100 steps, so the two differ slightly. The conditions were (`f_inh`, `w_inh`, `w_max`, `e_max`) = (0.2, 1.0, 10, 30), (0.5, 1.0, 10, 30), (0.5, 2.0, 10, 30), (0.5, 0.5, 10, 30) and (0.3, 1.5, 20, 10). The other sweep combinations exist only in the model.
@@ -224,7 +224,7 @@ E/I model (no board needed; the full sweep takes about 4 minutes):
 ```bash
 cd host
 python3 ei_experiment.py       # writes build/ei_experiment.csv
-python3 ei_full_sweep.py       # writes build/ei_full_sweep.csv (504 runs)
+python3 ei_full_sweep.py       # writes build/ei_full_sweep.csv (1,680 runs)
 python3 ei_full_summary.py     # writes build/ei_full_summary.csv
 ```
 

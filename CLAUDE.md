@@ -9,9 +9,9 @@
 - M1 / M2 已完成：Python 定點模型與 f-I 曲線；板上 LED、BSRAM 自測、UART 回送（`rtl/uart_echo.v`）；M2 單顆神經元上板比對（`host/run_trial.py` 三組參數，`host/sweep.py` 完整掃描 2,248 組，合計逐位元一致）；README 已完成，錄影待做。
 - M3 網路：
   - 網路核心（`rtl/network.v`，單埠 BSRAM 風格、雙累加器）在模擬中與模型逐位元一致，N = 16、64、256 分別為 3,200、12,800、51,200 筆紀錄。
-  - 完整設計（`rtl/network_top.v`：UART 命令、權重與輸入載入、計數與快照讀回、逐步 spike 軌跡 READ_TRACE 0x09，前 512 步）：位元組層級模擬 N = 16、64、256 通過（N = 256 為 682 個封包，`docs/EXPLAIN.md` 4.18）；`make TOP=network_top` 布線通過，區塊記憶體 45/46，41.38 MHz（4.20）。網表模擬在此工具鏈無法完成（Gowin 區塊記憶體模擬模型是空的），2026-11-04 起以上板結果作為功能驗證。
+  - 完整設計（`rtl/network_top.v`：UART 命令、權重與輸入載入、計數與快照讀回、逐步 spike 軌跡 READ_TRACE 0x09，前 512 步）：位元組層級模擬 N = 16、64、256 通過（N = 256 為 682 個封包，`docs/EXPLAIN.md` 4.18）；`make TOP=network_top` 布線通過，區塊記憶體 45/46，布線後 38.75 MHz（4.20）。網表模擬在此工具鏈無法完成（Gowin 區塊記憶體模擬模型是空的），2026-11-04 起以上板結果作為功能驗證。
   - 已燒上板（SRAM）：N = 256 流程測試（682 個封包）與模型逐位元一致，PASS。E/I 五個條件（f_inh 0.2、0.5 等）各 745 個封包，計數、快照與前 512 步 spike 軌跡都與完整模型逐位元一致，PASS。
-  - E/I 擾動（f_inh 0 到 0.6）：模型完整掃描 504 次執行，24 組全部單調（`docs/EXPLAIN.md` 4.19）。
+  - E/I 擾動（f_inh 0 到 0.6）：模型完整掃描 1,680 次執行（每組 10 個網路），24 組全部單調，每個網路也都單調（`docs/EXPLAIN.md` 4.19）。
   - 論文正文還沒寫。論文準備在 `docs/paper/`（outline.md、main.tex 骨架、references.bib）。
 - M1 其餘待辦：原理圖與腳位核對（rx 70、tx 69、pin 88，見下方「板子事實」）。
 

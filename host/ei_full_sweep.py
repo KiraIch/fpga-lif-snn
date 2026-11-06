@@ -5,7 +5,7 @@ Axes (all combinations, each with several random networks):
     w_inh  inhibitory weight scale (1.0 = same size)  0.5, 1.0, 1.5, 2.0
     w_max  largest excitatory weight magnitude        10, 20
     e_max  external input 0..e_max (Q8.8 raw)         10, 30, 60
-    seed   random networks                            3 per combination
+    seed   random networks                            10 per combination
 
 Same arithmetic as model/network.py (see host/ei_sweep.py: run() visits only the spiking
 sources, and the chosen conditions are checked against the exact model on the board).
@@ -28,7 +28,7 @@ F_INH = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
 W_INH = [0.5, 1.0, 1.5, 2.0]
 W_MAX = [10, 20]
 E_MAX = [10, 30, 60]
-SEEDS = [20261104, 20261105, 20261106]
+SEEDS = [20261104 + i for i in range(10)]
 
 
 def build(f_inh, w_max, w_inh, rng):

@@ -543,3 +543,52 @@
 
 - 作者用 PDF 檢查版面與標題、作者的顯示。
 - 投稿前移除 `note` 裡的 check 提醒。
+
+## 2026-11-04（依 Research Square 審查報告修正）
+
+**完成**
+
+- 論文（`docs/paper/main.tex`）：
+  - 標題改為 Bit-Level Verification of a Fixed-Point LIF Neuron and a 256-Neuron Spiking Network on a Low-Cost FPGA。摘要與引言不再把整個網路稱為 bit-exact：單顆神經元是每一步逐位元一致；網路是 spike 與最後狀態一致。
+  - 刪除「arrival-order dependence」的說法，改為「固定順序走訪來源，精確和加一次飽和，結果與順序無關」。
+  - 修正記憶體描述：spike flag 是分散式（非同步讀取）記憶體，其餘才是 BRAM。
+  - Fig. 2 caption 改為 inter-spike interval 量化與不應期上限；死區只影響閾值附近的起點。Fig. 2 指明為參數組 A（`build/m2_trial.json` 即組 A）。
+  - fi_curve 的 0.027 差異註明使用 `lif.Params` 預設值，不是 Table 1 的參數。
+  - Table 2 caption 寫出隨機掃描的範圍與 seed。
+  - Table 3 改用 `build/ei_full_sweep.csv`（與板上腳本同一個生成器），10 個網路。
+  - Table 4 改用完整重建的 log（見下）。
+  - 新增 Conclusion 節。
+  - 移除未讀全文的引用（Brunel 2000、Gerstner 2002、Izhikevich 2003）；移除 bib 的 check 註記；Gautam 標題改為審查報告給的全名；Szczerek、Fan 補上 arXiv 版本與日期。
+  - 作者區、單位、利益衝突、經費、作者貢獻保留為佔位符，需要作者確認。
+- FPGA：`make -B TOP=network_top` 完整重建。
+  - 布線後最高頻率 **38.75 MHz**（關鍵路徑報告）。先前寫的 41.38 MHz 是布局後的估計，不是最終結果。
+  - BSRAM 45 / 46（97.8%），LUT4 2,536，DFF 1,315。
+  - log：`fpga/build/make_network_top_2026-11-04.log`（gitignore，不在版本控制中）。
+- E/I：seed 由 3 擴大到 10（`SEEDS = [20261104 + i for i in range(10)]`），共 1,680 次執行。
+  - 前 3 個 seed 與舊 CSV 逐位元相同，代表生成器未改變。舊 CSV 備份於 `build/ei_full_sweep_3seed.csv`。
+  - 24 組的平均發放率與每一個網路都嚴格單調遞減（沒有用到容許誤差）。
+  - 板上使用的網路（seed 20261104）在暖機後的發放率：f_inh 0.2 → 0.250、f_inh 0.5 → 0.139，與板上腳本的輸出一致。
+  - 有效連接密度（排除零權重）：f_inh 0.2 時平均 2.8%，名目值 8/N ≈ 3.1%。
+  - f_inh = 0 時平均 78% 的神經元發放率超過 0.3（範圍 65% 到 84%），天花板效應的說明已寫入論文。
+- 文件更正：41.38 MHz 改為 38.75 MHz（README、EXPLAIN 4.20、CLAUDE.md、DECISIONS D-010、outline）；BSRAM 97% 改為 98%；E/I 的 504 次執行改為 1,680 次（README、CLAUDE.md、EXPLAIN 4.19）。
+
+**驗證**
+
+- `pdflatex` + `bibtex` + `pdflatex` 兩次：0 個錯誤、0 個未定義引用、5 筆參考文獻全部解析。剩 2 個 overfull hbox（排版小問題）。
+- 布線 log 中的 BSRAM、LUT4、DFF 數字與論文表格一致。
+
+**觀察**
+
+- 審查報告的 P1 項目「飽和壓力測試（第 3.3、3.4 節）」尚未做。需要寫新的測試向量（兩個 frame 序列）、先跑模擬、再上板，並重新計算涵蓋率。板上目前未達飽和。
+- 「突變測試輸出 kill matrix」、「wrap_i1、wrap_v1、sat_once_V 是否等價」尚未做。
+- 論文 Availability 寫的 `results/` 目錄還沒建立。原始 CSV、板上 log 與布線 log 目前在 gitignore 的 `build/` 與 `fpga/build/` 中。
+- DECISIONS.md、EXPLAIN.md 的「草稿／待你用自己的話改寫」標記仍在，需要作者自己改寫。
+- `docs/papers/notes/ansari2026-fpga-lif-bitexact.md` 寫「10,000 筆 MNIST」，報告說硬體端只用 1,000 個樣本。尚未對照原 PDF。
+- 有一個 Monitor 誤判過（用 `pgrep`，Windows 上找不到程式），實際上 E/I 掃描一直在跑。之後的監控改用 log 更新時間判斷。
+
+**下一步**
+
+- 作者確認：單位、利益衝突、經費、作者貢獻、Availability 的 repo 與 commit。
+- 決定是否做飽和測試（需要模擬與上板）。
+- 建立 `results/` 目錄，決定哪些原始結果要放進版本控制。
+- 核對 Ansari 原 PDF 後修正筆記。

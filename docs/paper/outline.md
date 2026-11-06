@@ -35,7 +35,7 @@ Only claims with evidence below may go into the paper. Numbers come from the fil
 | 3 Hardware | Tang Nano 20K, pipeline, UART link, decoder, neuron top | `rtl/neuron_top.v`, `rtl/cmd_decoder.v` | first draft (single neuron and network) |
 | 4 Verification | model as spec; simulation; mutation tests; board comparison; sweep | C2, C3, C4, mutation logs | first draft |
 | 5 Results | board comparison figure, f-I figure, sweep table, limits of the UART link | C3, C4, C6 | figures exist |
-| 6 Resources and scaling | single neuron, network at N = 16, 64, 256 | C8 | synthesis done for N = 16, 64, 256; place-and-route of the full design at N = 256 done (45/46 BSRAM, 41.38 MHz); board: command flow at N = 256 and five E/I conditions done (see §1, board status) |
+| 6 Resources and scaling | single neuron, network at N = 16, 64, 256 | C8 | synthesis done for N = 16, 64, 256; place-and-route of the full design at N = 256 done (45/46 BSRAM, 38.75 MHz after routing; rebuilt 2026-11-04); board: command flow at N = 256 and five E/I conditions done (see §1, board status) |
 | 7 Limitations | no timeout in the decoder; bridge limit; not compared with biology; single-clock time steps; draft decisions | `docs/EXPLAIN.md` §6 | first draft |
 | 8 Availability and AI statement | repository; the AI-assisted development statement (same as README) | `README.md` | first draft; repository link is a TODO |
 
